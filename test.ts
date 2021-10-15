@@ -51,6 +51,8 @@ ADAPTERS.forEach(({ name: adapterName, adapter }) => {
     )
 
   const setAllValues = async (t: ExecutionContext) => {
+    await adapter.clear()
+
     await ensureAllValuesUndefined(t)
 
     await Promise.all(
@@ -62,8 +64,6 @@ ADAPTERS.forEach(({ name: adapterName, adapter }) => {
 
   // Tests
   test(`${adapterName}: Set, get, and clear`, async (t) => {
-    await adapter.clear()
-
     await setAllValues(t)
 
     // Clear all key-values
@@ -74,8 +74,6 @@ ADAPTERS.forEach(({ name: adapterName, adapter }) => {
   })
 
   test(`${adapterName}: Set, get, and delete`, async (t) => {
-    await adapter.clear()
-
     await setAllValues(t)
 
     // Delete the key-value at KEY_INDEX
@@ -97,6 +95,7 @@ ADAPTERS.forEach(({ name: adapterName, adapter }) => {
 
     await ensureAllValuesUndefined(t)
 
+    // Set all values with a TTL
     await Promise.all(
       VALUE_ENTRIES.map(([, value], i) => adapter.set(`key-${i}`, value, i + 1))
     )
