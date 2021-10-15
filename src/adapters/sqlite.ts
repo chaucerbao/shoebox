@@ -1,6 +1,6 @@
 // Imports
 import { Database } from 'sqlite3'
-import { Adapter, createAttachNamespace, isDefined } from '../index'
+import { Adapter, createAttachNamespace, isDefined, isExpired } from '../index'
 
 // Type Definitions
 interface SqliteOptions {
@@ -90,7 +90,7 @@ export default (options: SqliteOptions): Adapter => {
           if (isDefined(error)) return reject(error)
 
           if (isDefined(record)) {
-            if (isDefined(record.expiresAt) && record.expiresAt < Date.now()) {
+            if (isExpired(record.expiresAt)) {
               return remove(key).then(() => resolve(undefined))
             }
 

@@ -1,5 +1,5 @@
 // Imports
-import { Adapter, isDefined } from '../index'
+import { Adapter, isDefined, isExpired } from '../index'
 
 // Type Definitions
 interface Record {
@@ -28,7 +28,7 @@ export default (): Adapter => {
     const record = store.get(key)
 
     if (isDefined(record)) {
-      if (isDefined(record.expiresAt) && record.expiresAt < Date.now()) {
+      if (isExpired(record.expiresAt)) {
         remove(key)
 
         return undefined

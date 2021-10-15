@@ -10,5 +10,8 @@ export interface Adapter {
 export const isDefined = <T>(value: T): value is NonNullable<T> =>
   typeof value !== 'undefined' && value !== null
 
+export const isExpired = (expiresAt?: number) =>
+  isDefined(expiresAt) && expiresAt < Date.now()
+
 export const createAttachNamespace = (namespace: string) => (key: string) =>
   [namespace, key].join(':')
