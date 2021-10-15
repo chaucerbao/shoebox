@@ -11,20 +11,10 @@ interface Record {
 export default (): Adapter => {
   const store = new Map<string, Record>()
 
-  const get = async (key: string) => {
-    const record = store.get(key)
+  const clear = async () => store.clear()
 
-    if (isDefined(record)) {
-      if (isDefined(record.expiresAt) && record.expiresAt < Date.now()) {
-        store.delete(key)
-
-        return undefined
-      }
-
-      return record.value
-    }
-
-    return undefined
+  const remove = async (key: string) => {
+    store.delete(key)
   }
 
   const set = async (key: string, value: unknown, ttl?: number) => {
@@ -34,9 +24,21 @@ export default (): Adapter => {
     })
   }
 
-  const remove = async (key: string) => store.delete(key)
+  const get = async (key: string) => {
+    const record = store.get(key)
 
-  const clear = async () => store.clear()
+    if (isDefined(record)) {
+      if (isDefined(record.expiresAt) && record.expiresAt < Date.now()) {
+        remove(key)
+
+        return undefined
+      }
+
+      return record.value
+    }
+
+    return undefined
+  }
 
   return { get, set, delete: remove, clear }
 }
