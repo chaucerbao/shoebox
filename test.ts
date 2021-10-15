@@ -3,7 +3,8 @@ import test from 'ava'
 import sqlite3 from 'sqlite3'
 import { map, sqlite } from './src'
 
-const stores = [
+// Constants
+const ADAPTERS = [
   { name: 'Map', adapter: map() },
   {
     name: 'SQLite',
@@ -21,8 +22,17 @@ const VALUES = {
   array: [undefined, null, 'string', 42, true, { a: 'string', b: 42 }],
 }
 
-stores.forEach(({ name, adapter }) => {
-  test.beforeEach(() => adapter.clear())
+// Tests
+let isClearBeforeEachInitialized = false
+
+ADAPTERS.forEach(({ name, adapter }) => {
+  if (!isClearBeforeEachInitialized) {
+    test.beforeEach(async () => {
+      await adapter.clear()
+    })
+
+    isClearBeforeEachInitialized = true
+  }
 
   test(`${name}: Get non-existing key-value`, async (t) => {
     t.is(await adapter.get('does-not-exist'), undefined)
