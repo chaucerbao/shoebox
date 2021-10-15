@@ -15,7 +15,10 @@ export const isDefined = <T>(value: T): value is NonNullable<T> =>
   typeof value !== 'undefined' && value !== null
 
 export const isExpired = (expiresAt?: number) =>
-  isDefined(expiresAt) && expiresAt < Date.now()
+  isDefined(expiresAt) && expiresAt <= Date.now()
+
+export const expiresAt = (ttl?: number) =>
+  isDefined(ttl) ? Date.now() + ttl : undefined
 
 export const createAttachNamespace = (namespace: string) => (key: string) =>
   [namespace, key].join(':')

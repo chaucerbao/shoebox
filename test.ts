@@ -1,5 +1,5 @@
 // Imports
-import test from 'ava'
+import test, { ExecutionContext } from 'ava'
 import sqlite3 from 'sqlite3'
 import { map, sqlite } from './src'
 
@@ -22,58 +22,99 @@ const VALUES = {
   array: [undefined, null, 'string', 42, true, { a: 'string', b: 42 }],
 }
 
+// Mocks
+let mockNow = Date.now()
+
+test.before(() => {
+  global.Date.now = () => mockNow
+})
+
 // Tests
-let isClearBeforeEachInitialized = false
+ADAPTERS.forEach(({ name: adapterName, adapter }) => {
+  // Use an index where the `value` is not null nor undefined
+  const KEY_INDEX = 3
+  const VALUE_ENTRIES = Object.entries(VALUES)
 
-ADAPTERS.forEach(({ name, adapter }) => {
-  if (!isClearBeforeEachInitialized) {
-    test.beforeEach(async () => {
-      await adapter.clear()
-    })
+  // Helpers
+  const ensureAllValuesUndefined = (t: ExecutionContext) =>
+    Promise.all(
+      VALUE_ENTRIES.map(async (_, i) => {
+        t.is(await adapter.get(`key-${i}`), undefined)
+      })
+    )
 
-    isClearBeforeEachInitialized = true
+  const ensureAllValuesDefined = (t: ExecutionContext) =>
+    Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) => {
+        t.deepEqual(await adapter.get(`key-${i}`), value)
+      })
+    )
+
+  const setAllValues = async (t: ExecutionContext) => {
+    await ensureAllValuesUndefined(t)
+
+    await Promise.all(
+      VALUE_ENTRIES.map(([, value], i) => adapter.set(`key-${i}`, value))
+    )
+
+    await ensureAllValuesDefined(t)
   }
 
-  test(`${name}: Get non-existing key-value`, async (t) => {
-    t.is(await adapter.get('does-not-exist'), undefined)
+  // Tests
+  test(`${adapterName}: Set, get, and clear`, async (t) => {
+    await adapter.clear()
+
+    await setAllValues(t)
+
+    // Clear all key-values
+    await adapter.clear()
+
+    // Ensure all key-values are undefined
+    await ensureAllValuesUndefined(t)
   })
 
-  test(`${name}: Delete non-existing key-value`, async (t) => {
-    await adapter.delete('does-not-exist')
+  test(`${adapterName}: Set, get, and delete`, async (t) => {
+    await adapter.clear()
 
-    t.is(await adapter.get('does-not-exist'), undefined)
+    await setAllValues(t)
+
+    // Delete the key-value at KEY_INDEX
+    await adapter.delete(`key-${KEY_INDEX}`)
+
+    // Ensure that only the key-value at KEY_INDEX is now undefined
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) => {
+        const adapterValue = await adapter.get(`key-${i}`)
+
+        if (i === KEY_INDEX) t.is(adapterValue, undefined)
+        else t.deepEqual(adapterValue, value)
+      })
+    )
   })
 
-  test(`${name}: Clear`, async (t) => {
-    await Promise.all([
-      adapter.set('existing-key-1', true),
-      adapter.set('existing-key-2', false),
-    ])
+  test(`${adapterName}: Get with TTL`, async (t) => {
+    await adapter.clear()
 
-    t.is(await adapter.get('existing-key-1'), true)
-    t.is(await adapter.get('existing-key-2'), false)
+    await ensureAllValuesUndefined(t)
 
-    t.is(await adapter.clear(), undefined)
+    await Promise.all(
+      VALUE_ENTRIES.map(([, value], i) => adapter.set(`key-${i}`, value, i + 1))
+    )
 
-    t.is(await adapter.get('existing-key-1'), undefined)
-    t.is(await adapter.get('existing-key-2'), undefined)
-  })
+    await ensureAllValuesDefined(t)
 
-  Object.entries(VALUES).forEach(([type, VALUE]) => {
-    test.serial(`${name}: Get existing ${type} key-value`, async (t) => {
-      await adapter.set('existing-key', VALUE)
+    // Advance the time
+    mockNow += KEY_INDEX + 1
 
-      t.deepEqual(await adapter.get('existing-key'), VALUE)
-    })
+    // Ensure that all key-values before (and including) KEY_INDEX are now
+    // undefined, while key-values after KEY_INDEX are unchanged
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) => {
+        const adapterValue = await adapter.get(`key-${i}`)
 
-    test.serial(`${name}: Delete existing ${type} key-value`, async (t) => {
-      await adapter.set('existing-key', VALUE)
-
-      t.deepEqual(await adapter.get('existing-key'), VALUE)
-
-      await adapter.delete('existing-key')
-
-      t.is(await adapter.get('existing-key'), undefined)
-    })
+        if (i <= KEY_INDEX) t.is(adapterValue, undefined)
+        else t.deepEqual(adapterValue, value)
+      })
+    )
   })
 })

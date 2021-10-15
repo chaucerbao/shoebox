@@ -1,5 +1,5 @@
 // Imports
-import { Adapter, isDefined, isExpired } from '../index'
+import { Adapter, expiresAt, isDefined, isExpired } from '../index'
 
 // Type Definitions
 interface Record {
@@ -18,10 +18,7 @@ export default (): Adapter => {
   }
 
   const set = async (key: string, value: unknown, ttl?: number) => {
-    store.set(key, {
-      value,
-      expiresAt: isDefined(ttl) ? Date.now() + ttl : undefined,
-    })
+    store.set(key, { value, expiresAt: expiresAt(ttl) })
   }
 
   const get = async (key: string) => {

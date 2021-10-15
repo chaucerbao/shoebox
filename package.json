@@ -14,7 +14,8 @@
     ],
     "require": [
       "ts-node/register"
-    ]
+    ],
+    "serial": true
   },
   "devDependencies": {
     "@types/sqlite3": "^3.1.7",

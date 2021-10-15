@@ -1,6 +1,12 @@
 // Imports
 import { Database } from 'sqlite3'
-import { Adapter, createAttachNamespace, isDefined, isExpired } from '../index'
+import {
+  Adapter,
+  createAttachNamespace,
+  expiresAt,
+  isDefined,
+  isExpired,
+} from '../index'
 
 // Type Definitions
 interface SqliteOptions {
@@ -73,7 +79,7 @@ export default (options: SqliteOptions): Adapter => {
           $value: JSON.stringify(value, (k, v) =>
             typeof v === 'undefined' ? UNDEFINED : v
           ),
-          $expiresAt: isDefined(ttl) ? Date.now() + ttl : undefined,
+          $expiresAt: expiresAt(ttl),
         },
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
@@ -90,7 +96,7 @@ export default (options: SqliteOptions): Adapter => {
           if (isDefined(error)) return reject(error)
 
           if (isDefined(record)) {
-            if (isExpired(record.expiresAt)) {
+            if (isExpired(record.expires_at)) {
               return remove(key).then(() => resolve(undefined))
             }
 
