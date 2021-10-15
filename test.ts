@@ -1,8 +1,7 @@
 // Imports
 import test from 'ava'
 import sqlite3 from 'sqlite3'
-import map from './src/adapters/map'
-import sqlite from './src/adapters/sqlite'
+import { map, sqlite } from './src'
 
 const stores = [
   { name: 'Map', adapter: map() },
