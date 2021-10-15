@@ -1,0 +1,29 @@
+{
+  "name": "shoebox",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "author": "Alvin Chan <no@email.com>",
+  "license": "ISC",
+  "ava": {
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
+  },
+  "devDependencies": {
+    "ava": "^3.15.0",
+    "ts-node": "^10.3.0",
+    "typescript": "^4.4.4"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean; tsc",
+    "test": "ava"
+  }
+}
