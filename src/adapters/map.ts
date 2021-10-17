@@ -1,28 +1,48 @@
 // Imports
-import { Adapter, expiresAt, isDefined, isExpired } from '../index'
+import {
+  Adapter,
+  AdapterOptions,
+  createAttachNamespace,
+  expiresAt,
+  isDefined,
+  isExpired,
+} from '../index'
 
 // Type Definitions
-interface Record {
+interface MapOptions extends AdapterOptions {
+  client?: Map<string, MapRecord>
+}
+
+interface MapRecord {
   value: unknown
   expiresAt?: number
 }
 
 // Adapter
-export default (): Adapter => {
-  const store = new Map<string, Record>()
+export default (options: MapOptions): Adapter => {
+  const { client = new Map<string, MapRecord>(), namespace = 'shoe' } = options
+  const attachNamespace = createAttachNamespace(namespace)
 
-  const clear = async () => store.clear()
+  const clear = async () => {
+    const startsWithNamespace = new RegExp(`^${attachNamespace('')}`)
+
+    client.forEach((_, namespacedKey) => {
+      if (namespacedKey.startsWith(attachNamespace(''))) {
+        remove(namespacedKey.replace(startsWithNamespace, ''))
+      }
+    })
+  }
 
   const remove = async (key: string) => {
-    store.delete(key)
+    client.delete(attachNamespace(key))
   }
 
   const set = async (key: string, value: unknown, ttl?: number) => {
-    store.set(key, { value, expiresAt: expiresAt(ttl) })
+    client.set(attachNamespace(key), { value, expiresAt: expiresAt(ttl) })
   }
 
   const get = async (key: string) => {
-    const record = store.get(key)
+    const record = client.get(attachNamespace(key))
 
     if (isDefined(record)) {
       if (isExpired(record.expiresAt)) {

@@ -2,6 +2,7 @@
 import { Database } from 'sqlite3'
 import {
   Adapter,
+  AdapterOptions,
   createAttachNamespace,
   expiresAt,
   isDefined,
@@ -9,9 +10,8 @@ import {
 } from '../index'
 
 // Type Definitions
-interface SqliteOptions {
+interface SqliteOptions extends AdapterOptions {
   client: Database
-  namespace?: string
   table?: string
 }
 
@@ -20,7 +20,7 @@ const UNDEFINED = '__UNDEFINED__'
 
 // Adapter
 export default (options: SqliteOptions): Adapter => {
-  const { client, table = 'shoebox', namespace = 'shoebox' } = options
+  const { client, table = 'shoebox', namespace = 'shoe' } = options
   const attachNamespace = createAttachNamespace(namespace)
   let isInitialized = false
 

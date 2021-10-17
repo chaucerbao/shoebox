@@ -10,6 +10,10 @@ export interface Adapter {
   clear: () => Promise<void>
 }
 
+export interface AdapterOptions {
+  namespace?: string
+}
+
 // Helpers
 export const isDefined = <T>(value: T): value is NonNullable<T> =>
   typeof value !== 'undefined' && value !== null
