@@ -8,6 +8,13 @@ interface SqliteOptions extends StoreOptions {
   table?: string
 }
 
+interface SqlRecord {
+  namespace: string
+  key: string
+  value: string
+  expires_at?: number
+}
+
 // Constants
 const UNDEFINED = '__UNDEFINED__'
 
@@ -71,7 +78,7 @@ export default (options: SqliteOptions): Store => {
         [
           namespace,
           key,
-          JSON.stringify(value, (k, v) =>
+          JSON.stringify(value, (_, v) =>
             typeof v === 'undefined' ? UNDEFINED : v
           ),
           expiresAt(ttl),
@@ -87,7 +94,7 @@ export default (options: SqliteOptions): Store => {
       client.get(
         `SELECT * FROM ${table} WHERE namespace = ? AND key = ?`,
         [namespace, key],
-        (error, record) => {
+        (error, record: SqlRecord) => {
           if (isDefined(error)) return reject(error)
 
           if (isDefined(record)) {
@@ -96,7 +103,7 @@ export default (options: SqliteOptions): Store => {
             }
 
             return resolve(
-              JSON.parse(record.value, (k, v) =>
+              JSON.parse(record.value, (_, v) =>
                 v === UNDEFINED ? undefined : v
               )
             )
