@@ -1,15 +1,9 @@
 // Imports
 import { Database } from 'sqlite3'
-import {
-  Adapter,
-  AdapterOptions,
-  expiresAt,
-  isDefined,
-  isExpired,
-} from '../index'
+import { Store, StoreOptions, expiresAt, isDefined, isExpired } from '../index'
 
 // Type Definitions
-interface SqliteOptions extends AdapterOptions {
+interface SqliteOptions extends StoreOptions {
   client: Database
   table?: string
 }
@@ -17,8 +11,8 @@ interface SqliteOptions extends AdapterOptions {
 // Constants
 const UNDEFINED = '__UNDEFINED__'
 
-// Adapter
-export default (options: SqliteOptions): Adapter => {
+// Store
+export default (options: SqliteOptions): Store => {
   const { client, table = 'shoebox', namespace = 'default' } = options
   let isInitialized = false
 

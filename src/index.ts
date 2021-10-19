@@ -1,16 +1,16 @@
 // Imports and Exports
-export { default as map } from './adapters/map'
-export { default as sqlite } from './adapters/sqlite'
+export { default as map } from './stores/map'
+export { default as sqlite } from './stores/sqlite'
 
 // Type Definitions
-export interface Adapter {
+export interface Store {
   get: <T = unknown>(key: string) => Promise<T | undefined>
   set: <T = unknown>(key: string, value: T, ttl?: number) => Promise<void>
   delete: (key: string) => Promise<void>
   clear: () => Promise<void>
 }
 
-export interface AdapterOptions {
+export interface StoreOptions {
   namespace?: string
 }
 

@@ -1,25 +1,25 @@
 // Imports
 import test, { ExecutionContext } from 'ava'
 import sqlite3 from 'sqlite3'
-import { Adapter, map, sqlite } from './src'
+import { map, sqlite, Store } from './src'
 
 const mapClient = new Map()
 const sqliteClient = new sqlite3.Database(':memory:')
 
 // Constants
-const ADAPTERS = [
+const STORES = [
   {
     name: 'Map',
-    adapters: [
-      map({ client: mapClient, namespace: 'shoeA' }),
-      map({ client: mapClient, namespace: 'shoeB' }),
+    stores: [
+      map({ client: mapClient }),
+      map({ client: mapClient, namespace: 'namespace' }),
     ],
   },
   {
     name: 'SQLite',
-    adapters: [
-      sqlite({ client: sqliteClient, namespace: 'shoeA' }),
-      sqlite({ client: sqliteClient, namespace: 'shoeB' }),
+    stores: [
+      sqlite({ client: sqliteClient }),
+      sqlite({ client: sqliteClient, namespace: 'namespace' }),
     ],
   },
 ]
@@ -42,84 +42,82 @@ test.before(() => {
 })
 
 // Tests
-ADAPTERS.forEach(({ name: adapterName, adapters: [adapterA, adapterB] }) => {
+STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
   // Use an index where the `value` is not null nor undefined
   const KEY_INDEX = 3
   const VALUE_ENTRIES = Object.entries(VALUES)
 
   // Helpers
-  const ensureAllValuesUndefined = (t: ExecutionContext, adapter: Adapter) =>
+  const ensureAllValuesUndefined = (t: ExecutionContext, store: Store) =>
     Promise.all(
       VALUE_ENTRIES.map(async (_, i) =>
-        t.is(await adapter.get(`key-${i}`), undefined)
+        t.is(await store.get(`key-${i}`), undefined)
       )
     )
 
-  const ensureAllValuesDefined = (t: ExecutionContext, adapter: Adapter) =>
+  const ensureAllValuesDefined = (t: ExecutionContext, store: Store) =>
     Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
-        t.deepEqual(await adapter.get(`key-${i}`), value)
+        t.deepEqual(await store.get(`key-${i}`), value)
       })
     )
 
-  const setAllValues = async (t: ExecutionContext, adapter: Adapter) => {
-    await adapter.clear()
-    await ensureAllValuesUndefined(t, adapter)
+  const setAllValues = async (t: ExecutionContext, store: Store) => {
+    await store.clear()
+    await ensureAllValuesUndefined(t, store)
 
     await Promise.all(
-      VALUE_ENTRIES.map(([, value], i) => adapter.set(`key-${i}`, value))
+      VALUE_ENTRIES.map(([, value], i) => store.set(`key-${i}`, value))
     )
 
-    await ensureAllValuesDefined(t, adapter)
+    await ensureAllValuesDefined(t, store)
   }
 
   // Tests
-  test(`${adapterName}: Set, get, and clear`, async (t) => {
-    await setAllValues(t, adapterA)
-    await setAllValues(t, adapterB)
+  test(`${storeName}: Set, get, and clear`, async (t) => {
+    await setAllValues(t, storeA)
+    await setAllValues(t, storeB)
 
     // Clear all key-values from one namespace
-    await adapterA.clear()
+    await storeA.clear()
 
     // Ensure all key-values are undefined for that namespace only
-    await ensureAllValuesUndefined(t, adapterA)
-    await ensureAllValuesDefined(t, adapterB)
+    await ensureAllValuesUndefined(t, storeA)
+    await ensureAllValuesDefined(t, storeB)
   })
 
-  test(`${adapterName}: Set, get, and delete`, async (t) => {
-    await setAllValues(t, adapterA)
-    await setAllValues(t, adapterB)
+  test(`${storeName}: Set, get, and delete`, async (t) => {
+    await setAllValues(t, storeA)
+    await setAllValues(t, storeB)
 
     // Delete the key-value at KEY_INDEX for one namespace
-    await adapterA.delete(`key-${KEY_INDEX}`)
+    await storeA.delete(`key-${KEY_INDEX}`)
 
     // Ensure that only the key-value at KEY_INDEX for that namespace is now undefined
     await Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
-        const adapterValue = await adapterA.get(`key-${i}`)
+        const storeValue = await storeA.get(`key-${i}`)
 
-        if (i === KEY_INDEX) t.is(adapterValue, undefined)
-        else t.deepEqual(adapterValue, value)
+        if (i === KEY_INDEX) t.is(storeValue, undefined)
+        else t.deepEqual(storeValue, value)
       })
     )
 
-    await ensureAllValuesDefined(t, adapterB)
+    await ensureAllValuesDefined(t, storeB)
   })
 
-  test(`${adapterName}: Get with TTL`, async (t) => {
-    await adapterA.clear()
-    await ensureAllValuesUndefined(t, adapterA)
-    await setAllValues(t, adapterB)
+  test(`${storeName}: Get with TTL`, async (t) => {
+    await storeA.clear()
+    await ensureAllValuesUndefined(t, storeA)
+    await setAllValues(t, storeB)
 
     // Set all values with a TTL for one namespace
     await Promise.all(
-      VALUE_ENTRIES.map(([, value], i) =>
-        adapterA.set(`key-${i}`, value, i + 1)
-      )
+      VALUE_ENTRIES.map(([, value], i) => storeA.set(`key-${i}`, value, i + 1))
     )
 
-    await ensureAllValuesDefined(t, adapterA)
-    await ensureAllValuesDefined(t, adapterB)
+    await ensureAllValuesDefined(t, storeA)
+    await ensureAllValuesDefined(t, storeB)
 
     // Advance the time
     mockNow += KEY_INDEX + 1
@@ -129,13 +127,13 @@ ADAPTERS.forEach(({ name: adapterName, adapters: [adapterA, adapterB] }) => {
     // namespace only
     await Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
-        const adapterValue = await adapterA.get(`key-${i}`)
+        const storeValue = await storeA.get(`key-${i}`)
 
-        if (i <= KEY_INDEX) t.is(adapterValue, undefined)
-        else t.deepEqual(adapterValue, value)
+        if (i <= KEY_INDEX) t.is(storeValue, undefined)
+        else t.deepEqual(storeValue, value)
       })
     )
 
-    await ensureAllValuesDefined(t, adapterB)
+    await ensureAllValuesDefined(t, storeB)
   })
 })

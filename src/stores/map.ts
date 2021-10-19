@@ -1,14 +1,8 @@
 // Imports
-import {
-  Adapter,
-  AdapterOptions,
-  expiresAt,
-  isDefined,
-  isExpired,
-} from '../index'
+import { Store, StoreOptions, expiresAt, isDefined, isExpired } from '../index'
 
 // Type Definitions
-interface MapOptions extends AdapterOptions {
+interface MapOptions extends StoreOptions {
   client?: Map<string, MapRecord>
 }
 
@@ -17,8 +11,8 @@ interface MapRecord {
   expiresAt?: number
 }
 
-// Adapter
-export default (options: MapOptions = {}): Adapter => {
+// Store
+export default (options: MapOptions = {}): Store => {
   const { client = new Map<string, MapRecord>(), namespace = 'default' } =
     options
 
