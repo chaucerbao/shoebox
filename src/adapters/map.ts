@@ -2,7 +2,6 @@
 import {
   Adapter,
   AdapterOptions,
-  createAttachNamespace,
   expiresAt,
   isDefined,
   isExpired,
@@ -19,9 +18,11 @@ interface MapRecord {
 }
 
 // Adapter
-export default (options: MapOptions): Adapter => {
-  const { client = new Map<string, MapRecord>(), namespace = 'shoe' } = options
-  const attachNamespace = createAttachNamespace(namespace)
+export default (options: MapOptions = {}): Adapter => {
+  const { client = new Map<string, MapRecord>(), namespace = 'default' } =
+    options
+
+  const attachNamespace = (key: string) => [namespace, key].join(':')
 
   const clear = async () => {
     const startsWithNamespace = new RegExp(`^${attachNamespace('')}`)

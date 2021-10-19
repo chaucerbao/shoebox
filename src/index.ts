@@ -23,6 +23,3 @@ export const isExpired = (expiresAt?: number) =>
 
 export const expiresAt = (ttl?: number) =>
   isDefined(ttl) ? Date.now() + ttl : undefined
-
-export const createAttachNamespace = (namespace: string) => (key: string) =>
-  [namespace, key].join(':')

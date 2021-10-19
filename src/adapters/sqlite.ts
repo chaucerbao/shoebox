@@ -3,7 +3,6 @@ import { Database } from 'sqlite3'
 import {
   Adapter,
   AdapterOptions,
-  createAttachNamespace,
   expiresAt,
   isDefined,
   isExpired,
@@ -20,8 +19,7 @@ const UNDEFINED = '__UNDEFINED__'
 
 // Adapter
 export default (options: SqliteOptions): Adapter => {
-  const { client, table = 'shoebox', namespace = 'shoe' } = options
-  const attachNamespace = createAttachNamespace(namespace)
+  const { client, table = 'shoebox', namespace = 'default' } = options
   let isInitialized = false
 
   const createTable = () =>
@@ -30,9 +28,11 @@ export default (options: SqliteOptions): Adapter => {
         client.run(
           `
             CREATE TABLE IF NOT EXISTS ${table} (
-              key TEXT UNIQUE,
+              namespace TEXT,
+              key TEXT,
               value TEXT,
-              expires_at INTEGER
+              expires_at INTEGER,
+              PRIMARY KEY (namespace, key)
             )
           `,
           (error) => {
@@ -51,8 +51,8 @@ export default (options: SqliteOptions): Adapter => {
       await createTable()
 
       client.run(
-        `DELETE FROM ${table} WHERE key LIKE ?`,
-        `${attachNamespace('')}%`,
+        `DELETE FROM ${table} WHERE namespace = ?`,
+        namespace,
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
     })
@@ -62,8 +62,8 @@ export default (options: SqliteOptions): Adapter => {
       await createTable()
 
       client.run(
-        `DELETE FROM ${table} WHERE key = ?`,
-        attachNamespace(key),
+        `DELETE FROM ${table} WHERE namespace = ? AND key = ?`,
+        [namespace, key],
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
     })
@@ -73,14 +73,15 @@ export default (options: SqliteOptions): Adapter => {
       await createTable()
 
       client.run(
-        `INSERT OR REPLACE INTO ${table} (key, value, expires_at) VALUES ($key, $value, $expiresAt)`,
-        {
-          $key: attachNamespace(key),
-          $value: JSON.stringify(value, (k, v) =>
+        `INSERT OR REPLACE INTO ${table} (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`,
+        [
+          namespace,
+          key,
+          JSON.stringify(value, (k, v) =>
             typeof v === 'undefined' ? UNDEFINED : v
           ),
-          $expiresAt: expiresAt(ttl),
-        },
+          expiresAt(ttl),
+        ],
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
     })
@@ -90,8 +91,8 @@ export default (options: SqliteOptions): Adapter => {
       await createTable()
 
       client.get(
-        `SELECT * FROM ${table} WHERE key = ?`,
-        attachNamespace(key),
+        `SELECT * FROM ${table} WHERE namespace = ? AND key = ?`,
+        [namespace, key],
         (error, record) => {
           if (isDefined(error)) return reject(error)
 
