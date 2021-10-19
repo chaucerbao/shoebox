@@ -22,8 +22,8 @@ export default (options: SqliteOptions): Store => {
         client.run(
           `
             CREATE TABLE IF NOT EXISTS ${table} (
-              namespace TEXT,
-              key TEXT,
+              namespace TEXT NOT NULL,
+              key TEXT NOT NULL,
               value TEXT,
               expires_at INTEGER,
               PRIMARY KEY (namespace, key)
