@@ -27,6 +27,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "npm run clean; tsc",
-    "test": "ava"
+    "test": "ava",
+    "prepare": "npm run build"
   }
 }
