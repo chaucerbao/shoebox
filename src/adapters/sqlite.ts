@@ -68,7 +68,7 @@ export default (options: SqliteOptions): Adapter => {
       )
     })
 
-  const set = (key: string, value: unknown, ttl?: number) =>
+  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
     new Promise<void>(async (resolve, reject) => {
       await createTable()
 
@@ -85,8 +85,8 @@ export default (options: SqliteOptions): Adapter => {
       )
     })
 
-  const get = (key: string) =>
-    new Promise(async (resolve, reject) => {
+  const get = <T = unknown>(key: string) =>
+    new Promise<T | undefined>(async (resolve, reject) => {
       await createTable()
 
       client.get(

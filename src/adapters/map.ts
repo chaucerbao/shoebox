@@ -37,11 +37,11 @@ export default (options: MapOptions): Adapter => {
     client.delete(attachNamespace(key))
   }
 
-  const set = async (key: string, value: unknown, ttl?: number) => {
+  const set = async <T = unknown>(key: string, value: T, ttl?: number) => {
     client.set(attachNamespace(key), { value, expiresAt: expiresAt(ttl) })
   }
 
-  const get = async (key: string) => {
+  const get = async <T = unknown>(key: string) => {
     const record = client.get(attachNamespace(key))
 
     if (isDefined(record)) {
@@ -51,7 +51,7 @@ export default (options: MapOptions): Adapter => {
         return undefined
       }
 
-      return record.value
+      return record.value as T
     }
 
     return undefined

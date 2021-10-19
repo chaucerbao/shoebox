@@ -4,8 +4,8 @@ export { default as sqlite } from './adapters/sqlite'
 
 // Type Definitions
 export interface Adapter {
-  get: (key: string) => Promise<unknown>
-  set: (key: string, value: unknown, ttl?: number) => Promise<void>
+  get: <T = unknown>(key: string) => Promise<T | undefined>
+  set: <T = unknown>(key: string, value: T, ttl?: number) => Promise<void>
   delete: (key: string) => Promise<void>
   clear: () => Promise<void>
 }
