@@ -1,6 +1,14 @@
 // Imports
 import { Database } from 'sqlite3'
-import { Store, StoreOptions, expiresAt, isDefined, isExpired } from '../index'
+import {
+  deserialize,
+  expiresAt,
+  isDefined,
+  isExpired,
+  serialize,
+  Store,
+  StoreOptions,
+} from '../index'
 
 // Type Definitions
 interface SqliteOptions extends StoreOptions {
@@ -14,9 +22,6 @@ interface SqlRecord {
   value: string
   expires_at?: number
 }
-
-// Constants
-const UNDEFINED = '__UNDEFINED__'
 
 // Store
 export default (options: SqliteOptions): Store => {
@@ -75,14 +80,7 @@ export default (options: SqliteOptions): Store => {
 
       client.run(
         `INSERT OR REPLACE INTO ${table} (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`,
-        [
-          namespace,
-          key,
-          JSON.stringify(value, (_, v) =>
-            typeof v === 'undefined' ? UNDEFINED : v
-          ),
-          expiresAt(ttl),
-        ],
+        [namespace, key, serialize(value), expiresAt(ttl)],
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
     })
@@ -102,11 +100,7 @@ export default (options: SqliteOptions): Store => {
               return remove(key).then(() => resolve(undefined))
             }
 
-            return resolve(
-              JSON.parse(record.value, (_, v) =>
-                v === UNDEFINED ? undefined : v
-              )
-            )
+            return resolve(deserialize<T>(record.value))
           }
 
           return resolve(undefined)
