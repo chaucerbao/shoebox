@@ -1,10 +1,12 @@
 // Imports
 import test, { ExecutionContext } from 'ava'
+import Redis from 'ioredis'
 import sqlite3 from 'sqlite3'
-import { map, sqlite, Store } from './src'
+import { map, redis, sqlite, Store } from './src'
 
 const mapClient = new Map()
 const sqliteClient = new sqlite3.Database(':memory:')
+const redisClient = new Redis()
 
 // Constants
 const STORES = [
@@ -14,6 +16,14 @@ const STORES = [
       map({ client: mapClient }),
       map({ client: mapClient, namespace: 'namespace' }),
     ],
+  },
+  {
+    name: 'Redis',
+    stores: [
+      redis({ client: redisClient }),
+      redis({ client: redisClient, namespace: 'namespace' }),
+    ],
+    skipTtl: true,
   },
   {
     name: 'SQLite',
@@ -42,7 +52,7 @@ test.before(() => {
 })
 
 // Tests
-STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
+STORES.forEach(({ name: storeName, stores: [storeA, storeB], skipTtl }) => {
   // Use an index where the `value` is not null nor undefined
   const KEY_INDEX = 3
   const VALUE_ENTRIES = Object.entries(VALUES)
@@ -107,6 +117,8 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
   })
 
   test(`${storeName}: Get with TTL`, async (t) => {
+    if (skipTtl) return t.pass()
+
     await storeA.clear()
     await ensureAllValuesUndefined(t, storeA)
     await setAllValues(t, storeB)

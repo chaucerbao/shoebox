@@ -1,5 +1,6 @@
 // Imports and Exports
 export { default as map } from './stores/map'
+export { default as redis } from './stores/redis'
 export { default as sqlite } from './stores/sqlite'
 
 // Type Definitions
