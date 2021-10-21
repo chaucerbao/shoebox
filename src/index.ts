@@ -16,6 +16,7 @@ export interface StoreOptions {
 }
 
 // Constants
+export const NAMESPACE_DEFAULT = 'default'
 const UNDEFINED = '__UNDEFINED__'
 
 // Helpers

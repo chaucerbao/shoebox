@@ -5,6 +5,7 @@ import {
   expiresAt,
   isDefined,
   isExpired,
+  NAMESPACE_DEFAULT,
   serialize,
   Store,
   StoreOptions,
@@ -25,7 +26,7 @@ interface SqlRecord {
 
 // Store
 export default (options: SqliteOptions): Store => {
-  const { client, table = 'shoebox', namespace = 'default' } = options
+  const { client, table = 'shoebox', namespace = NAMESPACE_DEFAULT } = options
   let isInitialized = false
 
   const createTable = () =>
@@ -90,7 +91,7 @@ export default (options: SqliteOptions): Store => {
       await createTable()
 
       client.get(
-        `SELECT * FROM ${table} WHERE namespace = ? AND key = ?`,
+        `SELECT * FROM ${table} WHERE namespace = ? AND key = ? LIMIT 1`,
         [namespace, key],
         (error, record: SqlRecord) => {
           if (isDefined(error)) return reject(error)

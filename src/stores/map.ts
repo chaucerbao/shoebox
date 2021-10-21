@@ -1,5 +1,12 @@
 // Imports
-import { Store, StoreOptions, expiresAt, isDefined, isExpired } from '../index'
+import {
+  expiresAt,
+  isDefined,
+  isExpired,
+  NAMESPACE_DEFAULT,
+  Store,
+  StoreOptions,
+} from '../index'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
@@ -13,35 +20,37 @@ interface MapRecord {
 
 // Store
 export default (options: MapOptions = {}): Store => {
-  const { client = new Map<string, MapRecord>(), namespace = 'default' } =
-    options
+  const {
+    client = new Map<string, MapRecord>(),
+    namespace = NAMESPACE_DEFAULT,
+  } = options
 
-  const attachNamespace = (key: string) => [namespace, key].join(':')
+  const addNamespacePrefix = (key: string) => [namespace, key].join(':')
 
   const clear = async () => {
-    const startsWithNamespace = new RegExp(`^${attachNamespace('')}`)
+    const namespacePrefix = addNamespacePrefix('')
+    const namespacePrefixRegex = new RegExp(`^${namespacePrefix}`)
 
-    client.forEach((_, namespacedKey) => {
-      if (namespacedKey.startsWith(attachNamespace(''))) {
-        remove(namespacedKey.replace(startsWithNamespace, ''))
-      }
+    client.forEach((_, keyWithNamespace) => {
+      if (keyWithNamespace.startsWith(namespacePrefix))
+        remove(keyWithNamespace.replace(namespacePrefixRegex, ''))
     })
   }
 
   const remove = async (key: string) => {
-    client.delete(attachNamespace(key))
+    client.delete(addNamespacePrefix(key))
   }
 
   const set = async <T = unknown>(key: string, value: T, ttl?: number) => {
-    client.set(attachNamespace(key), { value, expiresAt: expiresAt(ttl) })
+    client.set(addNamespacePrefix(key), { value, expiresAt: expiresAt(ttl) })
   }
 
   const get = async <T = unknown>(key: string) => {
-    const record = client.get(attachNamespace(key))
+    const record = client.get(addNamespacePrefix(key))
 
     if (isDefined(record)) {
       if (isExpired(record.expiresAt)) {
-        remove(key)
+        await remove(key)
 
         return undefined
       }

@@ -3,6 +3,7 @@ import { Redis } from 'ioredis'
 import {
   deserialize,
   isDefined,
+  NAMESPACE_DEFAULT,
   serialize,
   Store,
   StoreOptions,
@@ -15,35 +16,38 @@ interface RedisOptions extends StoreOptions {
 
 // Store
 export default (options: RedisOptions): Store => {
-  const { client, namespace = 'default' } = options
+  const { client, namespace = NAMESPACE_DEFAULT } = options
 
-  const namespaceSet = ['namespace', namespace].join(':')
-  const attachNamespace = (key: string) => [namespace, key].join(':')
+  const NAMESPACES = ['namespace', namespace].join(':')
+  const addNamespacePrefix = (key: string) => [namespace, key].join(':')
 
   const clear = async () => {
-    client.del([...(await client.smembers(namespaceSet)), namespaceSet])
+    client.del([...(await client.smembers(NAMESPACES)), NAMESPACES])
   }
 
   const remove = async (key: string) => {
+    const keyWithNamespace = addNamespacePrefix(key)
+
     await Promise.all([
-      client.del(attachNamespace(key)),
-      client.srem(namespaceSet, attachNamespace(key)),
+      client.del(keyWithNamespace),
+      client.srem(NAMESPACES, keyWithNamespace),
     ])
   }
 
   const set = async <T = unknown>(key: string, value: T, ttl?: number) => {
+    const keyWithNamespace = addNamespacePrefix(key)
     const serializedValue = serialize(value)
 
     await Promise.all([
       isDefined(ttl)
-        ? await client.set(attachNamespace(key), serializedValue, 'PX', ttl)
-        : await client.set(attachNamespace(key), serializedValue),
-      client.sadd(namespaceSet, attachNamespace(key)),
+        ? await client.set(keyWithNamespace, serializedValue, 'PX', ttl)
+        : await client.set(keyWithNamespace, serializedValue),
+      client.sadd(NAMESPACES, keyWithNamespace),
     ])
   }
 
   const get = async <T = unknown>(key: string) => {
-    const serializedValue = await client.get(attachNamespace(key))
+    const serializedValue = await client.get(addNamespacePrefix(key))
 
     return isDefined(serializedValue)
       ? deserialize<T>(serializedValue)
