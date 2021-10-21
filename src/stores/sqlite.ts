@@ -7,9 +7,8 @@ import {
   isExpired,
   NAMESPACE_DEFAULT,
   serialize,
-  Store,
-  StoreOptions,
-} from '../index'
+} from '../helpers'
+import { Store, StoreOptions } from '../index'
 
 // Type Definitions
 interface SqliteOptions extends StoreOptions {

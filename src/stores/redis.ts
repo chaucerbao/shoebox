@@ -5,9 +5,8 @@ import {
   isDefined,
   NAMESPACE_DEFAULT,
   serialize,
-  Store,
-  StoreOptions,
-} from '../index'
+} from '../helpers'
+import { Store, StoreOptions } from '../index'
 
 // Type Definitions
 interface RedisOptions extends StoreOptions {

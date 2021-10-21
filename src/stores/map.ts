@@ -1,12 +1,6 @@
 // Imports
-import {
-  expiresAt,
-  isDefined,
-  isExpired,
-  NAMESPACE_DEFAULT,
-  Store,
-  StoreOptions,
-} from '../index'
+import { expiresAt, isDefined, isExpired, NAMESPACE_DEFAULT } from '../helpers'
+import { Store, StoreOptions } from '../index'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
