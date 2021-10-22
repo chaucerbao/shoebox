@@ -8,7 +8,7 @@ import {
   NAMESPACE_DEFAULT,
   serialize,
 } from '../helpers'
-import { Store, StoreOptions } from '../index'
+import { Store, StoreOptions, StoreRecord } from '../index'
 
 // Type Definitions
 interface SqliteOptions extends StoreOptions {
@@ -74,19 +74,19 @@ export default (options: SqliteOptions): Store => {
       )
     })
 
-  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
+  const importRecord = <T = unknown>(key: string, record: StoreRecord<T>) =>
     new Promise<void>(async (resolve, reject) => {
       await createTable()
 
       client.run(
         `INSERT OR REPLACE INTO ${table} (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`,
-        [namespace, key, serialize(value), expiresAt(ttl)],
+        [namespace, key, serialize(record.value), record.expiresAt],
         (error) => (isDefined(error) ? reject(error) : resolve())
       )
     })
 
-  const get = <T = unknown>(key: string) =>
-    new Promise<T | undefined>(async (resolve, reject) => {
+  const exportRecord = <T = unknown>(key: string) =>
+    new Promise<StoreRecord<T> | undefined>(async (resolve, reject) => {
       await createTable()
 
       client.get(
@@ -100,7 +100,10 @@ export default (options: SqliteOptions): Store => {
               return remove(key).then(() => resolve(undefined))
             }
 
-            return resolve(deserialize<T>(record.value))
+            return resolve({
+              value: deserialize<T>(record.value),
+              expiresAt: record.expires_at,
+            } as StoreRecord<T>)
           }
 
           return resolve(undefined)
@@ -108,5 +111,18 @@ export default (options: SqliteOptions): Store => {
       )
     })
 
-  return { get, set, delete: remove, clear }
+  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
+    importRecord(key, { value, expiresAt: expiresAt(ttl) })
+
+  const get = async <T = unknown>(key: string) =>
+    (await exportRecord(key))?.value as T
+
+  return {
+    import: importRecord,
+    export: exportRecord,
+    get,
+    set,
+    delete: remove,
+    clear,
+  }
 }

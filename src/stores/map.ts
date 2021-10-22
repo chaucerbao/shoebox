@@ -1,6 +1,6 @@
 // Imports
 import { expiresAt, isDefined, isExpired, NAMESPACE_DEFAULT } from '../helpers'
-import { Store, StoreOptions } from '../index'
+import { Store, StoreOptions, StoreRecord } from '../index'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
@@ -35,11 +35,14 @@ export default (options: MapOptions = {}): Store => {
     client.delete(addNamespacePrefix(key))
   }
 
-  const set = async <T = unknown>(key: string, value: T, ttl?: number) => {
-    client.set(addNamespacePrefix(key), { value, expiresAt: expiresAt(ttl) })
+  const importRecord = async <T = unknown>(
+    key: string,
+    record: StoreRecord<T>
+  ) => {
+    client.set(addNamespacePrefix(key), record)
   }
 
-  const get = async <T = unknown>(key: string) => {
+  const exportRecord = async <T = unknown>(key: string) => {
     const record = client.get(addNamespacePrefix(key))
 
     if (isDefined(record)) {
@@ -49,11 +52,24 @@ export default (options: MapOptions = {}): Store => {
         return undefined
       }
 
-      return record.value as T
+      return record as StoreRecord<T>
     }
 
     return undefined
   }
 
-  return { get, set, delete: remove, clear }
+  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
+    importRecord(key, { value, expiresAt: expiresAt(ttl) })
+
+  const get = async <T = unknown>(key: string) =>
+    (await exportRecord(key))?.value as T
+
+  return {
+    import: importRecord,
+    export: exportRecord,
+    get,
+    set,
+    delete: remove,
+    clear,
+  }
 }
