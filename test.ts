@@ -118,7 +118,38 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     await ensureAllValuesDefined(t, storeB)
   })
 
-  test(`${storeName}: Get with TTL`, async (t) => {
+  test(`${storeName}: Import and export with TTL`, async (t) => {
+    await storeA.clear()
+    await storeB.clear()
+
+    const expiresAt = Date.now() + TTL
+
+    await storeA.import('key', { value: VALUES.string })
+    await storeB.import('key', { value: VALUES.string, expiresAt })
+
+    t.deepEqual(await storeA.export('key'), { value: VALUES.string })
+
+    const record = await storeB.export('key')
+    if (typeof record !== 'undefined') {
+      t.deepEqual(record.value, VALUES.string)
+
+      // Check that `expiresAt` is within a 5ms margin of error, since some
+      // Stores have their own TTL mechanism
+      t.assert(
+        typeof record.expiresAt !== 'undefined' &&
+          record.expiresAt < expiresAt + 5
+      )
+    } else {
+      t.fail()
+    }
+
+    await delay(TTL)
+
+    t.deepEqual(await storeA.export('key'), { value: VALUES.string })
+    t.is(await storeB.export('key'), undefined)
+  })
+
+  test(`${storeName}: Get and set with TTL`, async (t) => {
     await setAllValues(t, storeA)
     await setAllValues(t, storeB)
 

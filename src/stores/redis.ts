@@ -62,7 +62,7 @@ export default (options: RedisOptions): Store => {
     return isDefined(serializedValue)
       ? {
           value: deserialize<T>(serializedValue),
-          expiresAt: ttl > 0 ? expiresAt(ttl) : undefined,
+          ...(ttl > 0 ? { expiresAt: expiresAt(ttl) } : {}),
         }
       : undefined
   }
