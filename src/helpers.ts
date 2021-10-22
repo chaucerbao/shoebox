@@ -1,5 +1,7 @@
+import { Store } from '.'
+
 // Constants
-export const NAMESPACE_DEFAULT = 'default'
+export const DEFAULT_NAMESPACE = 'default'
 const UNDEFINED = '__UNDEFINED__'
 
 // Helpers
@@ -35,3 +37,14 @@ export const debounce = <T extends unknown[], U>(
     })
   }
 }
+
+// Store Helpers
+export const setter =
+  (importer: Store['import']) =>
+  <T = unknown>(key: string, value: T, ttl?: number) =>
+    importer(key, { value, expiresAt: expiresAt(ttl) })
+
+export const getter =
+  (exporter: Store['export']) =>
+  async <T = unknown>(key: string) =>
+    (await exporter(key))?.value as T

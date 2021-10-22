@@ -1,28 +1,31 @@
 // Imports
 import { Redis } from 'ioredis'
 import {
+  DEFAULT_NAMESPACE,
   deserialize,
   expiresAt,
+  getter,
   isDefined,
-  NAMESPACE_DEFAULT,
   serialize,
+  setter,
 } from '../helpers'
 import { Store, StoreOptions, StoreRecord } from '../index'
 
 // Type Definitions
 interface RedisOptions extends StoreOptions {
   client: Redis
+  debounce?: number
 }
 
 // Store
 export default (options: RedisOptions): Store => {
-  const { client, namespace = NAMESPACE_DEFAULT } = options
+  const { client, namespace = DEFAULT_NAMESPACE } = options
 
-  const NAMESPACES = ['namespace', namespace].join(':')
+  const NAMESPACE = ['namespace', namespace].join(':')
   const addNamespacePrefix = (key: string) => [namespace, key].join(':')
 
   const clear = async () => {
-    client.del([...(await client.smembers(NAMESPACES)), NAMESPACES])
+    await client.del([...(await client.smembers(NAMESPACE)), NAMESPACE])
   }
 
   const remove = async (key: string) => {
@@ -30,14 +33,11 @@ export default (options: RedisOptions): Store => {
 
     await Promise.all([
       client.del(keyWithNamespace),
-      client.srem(NAMESPACES, keyWithNamespace),
+      client.srem(NAMESPACE, keyWithNamespace),
     ])
   }
 
-  const importRecord = async <T = unknown>(
-    key: string,
-    record: StoreRecord<T>
-  ) => {
+  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
     const keyWithNamespace = addNamespacePrefix(key)
     const serializedValue = serialize(record.value)
     const ttl = isDefined(record.expiresAt)
@@ -48,11 +48,11 @@ export default (options: RedisOptions): Store => {
       isDefined(ttl)
         ? client.set(keyWithNamespace, serializedValue, 'PX', ttl)
         : client.set(keyWithNamespace, serializedValue),
-      client.sadd(NAMESPACES, keyWithNamespace),
+      client.sadd(NAMESPACE, keyWithNamespace),
     ])
   }
 
-  const exportRecord = async <T = unknown>(key: string) => {
+  const exporter = async <T = unknown>(key: string) => {
     const keyWithNamespace = addNamespacePrefix(key)
     const [serializedValue, ttl] = await Promise.all([
       client.get(keyWithNamespace),
@@ -67,17 +67,11 @@ export default (options: RedisOptions): Store => {
       : undefined
   }
 
-  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
-    importRecord(key, { value, expiresAt: expiresAt(ttl) })
-
-  const get = async <T = unknown>(key: string) =>
-    (await exportRecord(key))?.value as T
-
   return {
-    import: importRecord,
-    export: exportRecord,
-    get,
-    set,
+    import: importer,
+    export: exporter,
+    get: getter(exporter),
+    set: setter(importer),
     delete: remove,
     clear,
   }

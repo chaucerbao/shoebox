@@ -1,12 +1,13 @@
 // Imports
 import { Database } from 'sqlite3'
 import {
+  DEFAULT_NAMESPACE,
   deserialize,
-  expiresAt,
+  getter,
   isDefined,
   isExpired,
-  NAMESPACE_DEFAULT,
   serialize,
+  setter,
 } from '../helpers'
 import { Store, StoreOptions, StoreRecord } from '../index'
 
@@ -14,6 +15,7 @@ import { Store, StoreOptions, StoreRecord } from '../index'
 interface SqliteOptions extends StoreOptions {
   client: Database
   table?: string
+  debounce?: number
 }
 
 interface SqlRecord {
@@ -25,7 +27,7 @@ interface SqlRecord {
 
 // Store
 export default (options: SqliteOptions): Store => {
-  const { client, table = 'shoebox', namespace = NAMESPACE_DEFAULT } = options
+  const { client, table = 'shoebox', namespace = DEFAULT_NAMESPACE } = options
   let isInitialized = false
 
   const createTable = () =>
@@ -74,7 +76,7 @@ export default (options: SqliteOptions): Store => {
       )
     })
 
-  const importRecord = <T = unknown>(key: string, record: StoreRecord<T>) =>
+  const importer = <T = unknown>(key: string, record: StoreRecord<T>) =>
     new Promise<void>(async (resolve, reject) => {
       await createTable()
 
@@ -85,7 +87,7 @@ export default (options: SqliteOptions): Store => {
       )
     })
 
-  const exportRecord = <T = unknown>(key: string) =>
+  const exporter = <T = unknown>(key: string) =>
     new Promise<StoreRecord<T> | undefined>(async (resolve, reject) => {
       await createTable()
 
@@ -111,17 +113,11 @@ export default (options: SqliteOptions): Store => {
       )
     })
 
-  const set = <T = unknown>(key: string, value: T, ttl?: number) =>
-    importRecord(key, { value, expiresAt: expiresAt(ttl) })
-
-  const get = async <T = unknown>(key: string) =>
-    (await exportRecord(key))?.value as T
-
   return {
-    import: importRecord,
-    export: exportRecord,
-    get,
-    set,
+    import: importer,
+    export: exporter,
+    get: getter(exporter),
+    set: setter(importer),
     delete: remove,
     clear,
   }

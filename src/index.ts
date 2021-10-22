@@ -20,5 +20,4 @@ export interface Store {
 
 export interface StoreOptions {
   namespace?: string
-  debounce?: number
 }
