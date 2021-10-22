@@ -4,18 +4,13 @@ import { Store, StoreOptions, StoreRecord } from '../index'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
-  client?: Map<string, MapRecord>
-}
-
-interface MapRecord {
-  value: unknown
-  expiresAt?: number
+  client?: Map<string, StoreRecord>
 }
 
 // Store
 export default (options: MapOptions = {}): Store => {
   const {
-    client = new Map<string, MapRecord>(),
+    client = new Map<string, StoreRecord>(),
     namespace = NAMESPACE_DEFAULT,
   } = options
 

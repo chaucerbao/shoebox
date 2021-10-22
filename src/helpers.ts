@@ -17,3 +17,21 @@ export const serialize = (value: unknown) =>
 
 export const deserialize = <T = unknown>(serializedValue: string) =>
   JSON.parse(serializedValue, (_, v) => (v === UNDEFINED ? undefined : v)) as T
+
+export const debounce = <T extends unknown[], U>(
+  callback: (...args: T) => PromiseLike<U> | U,
+  delay: number
+) => {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+
+  return (...params: T): Promise<U> => {
+    if (timeout) {
+      clearTimeout(timeout)
+      timeout = null
+    }
+
+    return new Promise((resolve) => {
+      timeout = setTimeout(() => resolve(callback(...params)), delay)
+    })
+  }
+}
