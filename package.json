@@ -1,7 +1,7 @@
 {
-  "name": "shoebox",
+  "name": "@chaucerbao/shoebox",
   "version": "0.1.0",
-  "description": "",
+  "description": "A lightweight key-value store",
   "main": "dist/index.js",
   "files": [
     "dist"
