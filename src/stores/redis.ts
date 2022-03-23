@@ -8,8 +8,8 @@ import {
   isDefined,
   serialize,
   setter,
-} from '../helpers'
-import { Store, StoreOptions, StoreRecord } from '../index'
+} from '../helpers.js'
+import { Store, StoreOptions, StoreRecord } from '../index.js'
 
 // Type Definitions
 interface RedisOptions extends StoreOptions {

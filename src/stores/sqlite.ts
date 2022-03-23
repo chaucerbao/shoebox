@@ -1,5 +1,5 @@
 // Imports
-import { Database } from 'sqlite3'
+import { Database } from 'better-sqlite3'
 import {
   DEFAULT_NAMESPACE,
   deserialize,
@@ -8,8 +8,8 @@ import {
   isExpired,
   serialize,
   setter,
-} from '../helpers'
-import { Store, StoreOptions, StoreRecord } from '../index'
+} from '../helpers.js'
+import { Store, StoreOptions, StoreRecord } from '../index.js'
 
 // Type Definitions
 interface SqliteOptions extends StoreOptions {
@@ -30,88 +30,68 @@ export default (options: SqliteOptions): Store => {
   const { client, table = 'shoebox', namespace = DEFAULT_NAMESPACE } = options
   let isInitialized = false
 
-  const createTable = () =>
-    new Promise<void>((resolve, reject) => {
-      if (!isInitialized) {
-        client.run(
+  const createTable = () => {
+    if (!isInitialized) {
+      client
+        .prepare(
           `
-            CREATE TABLE IF NOT EXISTS ${table} (
+            CREATE TABLE IF NOT EXISTS [${table}] (
               namespace TEXT NOT NULL,
               key TEXT NOT NULL,
               value TEXT,
               expires_at INTEGER,
               PRIMARY KEY (namespace, key)
             )
-          `,
-          (error) => {
-            isInitialized = true
-
-            return isDefined(error) ? reject(error) : resolve()
-          }
+          `
         )
-      } else {
-        return resolve()
-      }
-    })
+        .run()
 
-  const clear = () =>
-    new Promise<void>(async (resolve, reject) => {
-      await createTable()
+      isInitialized = true
+    }
+  }
 
-      client.run(
-        `DELETE FROM ${table} WHERE namespace = ?`,
-        namespace,
-        (error) => (isDefined(error) ? reject(error) : resolve())
+  const clear = async () => {
+    createTable()
+    client.prepare(`DELETE FROM [${table}] WHERE namespace = ?`).run(namespace)
+  }
+
+  const remove = async (key: string) => {
+    createTable()
+    client
+      .prepare(`DELETE FROM [${table}] WHERE namespace = ? AND key = ?`)
+      .run(namespace, key)
+  }
+
+  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
+    createTable()
+    client
+      .prepare(
+        `INSERT OR REPLACE INTO [${table}] (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`
       )
-    })
+      .run(namespace, key, serialize(record.value), record.expiresAt)
+  }
 
-  const remove = (key: string) =>
-    new Promise<void>(async (resolve, reject) => {
-      await createTable()
+  const exporter = async <T = unknown>(key: string) => {
+    createTable()
 
-      client.run(
-        `DELETE FROM ${table} WHERE namespace = ? AND key = ?`,
-        [namespace, key],
-        (error) => (isDefined(error) ? reject(error) : resolve())
+    const record = client
+      .prepare(
+        `SELECT * FROM [${table}] WHERE namespace = ? AND key = ? LIMIT 1`
       )
-    })
+      .get(namespace, key) as SqlRecord | undefined
 
-  const importer = <T = unknown>(key: string, record: StoreRecord<T>) =>
-    new Promise<void>(async (resolve, reject) => {
-      await createTable()
+    if (!isDefined(record)) return undefined
 
-      client.run(
-        `INSERT OR REPLACE INTO ${table} (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`,
-        [namespace, key, serialize(record.value), record.expiresAt],
-        (error) => (isDefined(error) ? reject(error) : resolve())
-      )
-    })
+    if (isExpired(record.expires_at)) {
+      remove(key)
+      return undefined
+    }
 
-  const exporter = <T = unknown>(key: string) =>
-    new Promise<StoreRecord<T> | undefined>(async (resolve, reject) => {
-      await createTable()
-
-      client.get(
-        `SELECT * FROM ${table} WHERE namespace = ? AND key = ? LIMIT 1`,
-        [namespace, key],
-        (error, record: SqlRecord) => {
-          if (isDefined(error)) return reject(error)
-
-          if (isDefined(record)) {
-            if (isExpired(record.expires_at)) {
-              return remove(key).then(() => resolve(undefined))
-            }
-
-            return resolve({
-              value: deserialize<T>(record.value),
-              ...(record.expires_at ? { expiresAt: record.expires_at } : {}),
-            } as StoreRecord<T>)
-          }
-
-          return resolve(undefined)
-        }
-      )
-    })
+    return {
+      value: deserialize<T>(record.value),
+      ...(record.expires_at ? { expiresAt: record.expires_at } : {}),
+    } as StoreRecord<T>
+  }
 
   return {
     import: importer,

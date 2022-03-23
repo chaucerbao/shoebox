@@ -1,14 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["es2017"],
-    "module": "commonjs",
-    "rootDir": "./src",
+    "rootDir": "src/",
+    "outDir": "dist/",
+
+    "target": "ESNext",
+    "lib": [],
+    "module": "ESNext",
+    "moduleResolution": "node",
     "declaration": true,
-    "outDir": "./dist",
-    "esModuleInterop": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true
+    "strict": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true
   },
-  "include": ["./src"]
+
+  "include": ["src/"]
 }

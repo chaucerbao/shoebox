@@ -1,11 +1,11 @@
 // Imports
-import test, { ExecutionContext } from 'ava'
+import test from 'ava'
+import SqliteDatabase from 'better-sqlite3'
 import Redis from 'ioredis'
-import sqlite3 from 'sqlite3'
-import { map, redis, sqlite, Store } from './src'
+import { map, redis, sqlite } from '../dist/index.js'
 
 const mapClient = new Map()
-const sqliteClient = new sqlite3.Database(':memory:')
+const sqliteClient = new SqliteDatabase(':memory:')
 const redisClient = new Redis()
 
 // Constants
@@ -44,7 +44,7 @@ const VALUES = {
 }
 
 // Helpers
-const delay = (milliseconds: number) =>
+const delay = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds))
 
 // Tests
@@ -55,21 +55,21 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
   const TTL = 100
 
   // Helpers
-  const ensureAllValuesUndefined = (t: ExecutionContext, store: Store) =>
+  const ensureAllValuesUndefined = (t, store) =>
     Promise.all(
       VALUE_ENTRIES.map(async (_, i) =>
         t.is(await store.get(`key-${i}`), undefined)
       )
     )
 
-  const ensureAllValuesDefined = (t: ExecutionContext, store: Store) =>
+  const ensureAllValuesDefined = (t, store) =>
     Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
         t.deepEqual(await store.get(`key-${i}`), value)
       })
     )
 
-  const setAllValues = async (t: ExecutionContext, store: Store) => {
+  const setAllValues = async (t, store) => {
     await store.clear()
     await ensureAllValuesUndefined(t, store)
 
@@ -80,10 +80,7 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     await ensureAllValuesDefined(t, store)
   }
 
-  const ensureValueUndefinedOnlyAtKeyIndex = (
-    t: ExecutionContext,
-    store: Store
-  ) =>
+  const ensureValueUndefinedOnlyAtKeyIndex = (t, store) =>
     Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
         const storeValue = await store.get(`key-${i}`)
@@ -94,7 +91,7 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     )
 
   // Tests
-  test(`${storeName}: Set, get, and clear`, async (t) => {
+  test.serial(`${storeName}: Set, get, and clear`, async (t) => {
     await setAllValues(t, storeA)
     await setAllValues(t, storeB)
 
@@ -106,7 +103,7 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     await ensureAllValuesDefined(t, storeB)
   })
 
-  test(`${storeName}: Set, get, and delete`, async (t) => {
+  test.serial(`${storeName}: Set, get, and delete`, async (t) => {
     await setAllValues(t, storeA)
     await setAllValues(t, storeB)
 
@@ -118,7 +115,7 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     await ensureAllValuesDefined(t, storeB)
   })
 
-  test(`${storeName}: Import and export with TTL`, async (t) => {
+  test.serial(`${storeName}: Import and export with TTL`, async (t) => {
     await storeA.clear()
     await storeB.clear()
 
@@ -149,7 +146,7 @@ STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
     t.is(await storeB.export('key'), undefined)
   })
 
-  test(`${storeName}: Get and set with TTL`, async (t) => {
+  test.serial(`${storeName}: Get and set with TTL`, async (t) => {
     await setAllValues(t, storeA)
     await setAllValues(t, storeB)
 

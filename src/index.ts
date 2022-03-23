@@ -1,7 +1,7 @@
 // Imports and Exports
-export { default as map } from './stores/map'
-export { default as redis } from './stores/redis'
-export { default as sqlite } from './stores/sqlite'
+export { default as map } from './stores/map.js'
+export { default as redis } from './stores/redis.js'
+export { default as sqlite } from './stores/sqlite.js'
 
 // Type Definitions
 export interface StoreRecord<T = unknown> {

@@ -5,8 +5,8 @@ import {
   isDefined,
   isExpired,
   setter,
-} from '../helpers'
-import { Store, StoreOptions, StoreRecord } from '../index'
+} from '../helpers.js'
+import { Store, StoreOptions, StoreRecord } from '../index.js'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
