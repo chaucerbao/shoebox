@@ -12,6 +12,10 @@
   "files": [
     "dist/"
   ],
+  "peerDependencies": {
+    "@types/better-sqlite3": "7.x",
+    "@types/ioredis": "4.x"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.5.0",
     "@types/ioredis": "^4.28.10",
