@@ -3,7 +3,6 @@ import { Redis } from 'ioredis'
 import {
   DEFAULT_NAMESPACE,
   deserialize,
-  expiresAt,
   getter,
   isDefined,
   serialize,
@@ -14,7 +13,6 @@ import { Store, StoreOptions, StoreRecord } from '../index.js'
 // Type Definitions
 interface RedisOptions extends StoreOptions {
   client: Redis
-  debounce?: number
 }
 
 // Store
@@ -39,31 +37,25 @@ export default (options: RedisOptions): Store => {
 
   const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
     const keyWithNamespace = addNamespacePrefix(key)
-    const serializedValue = serialize(record.value)
+    const serializedRecord = serialize(record)
     const ttl = isDefined(record.expiresAt)
       ? record.expiresAt - Date.now()
       : undefined
 
     await Promise.all([
       isDefined(ttl)
-        ? client.set(keyWithNamespace, serializedValue, 'PX', ttl)
-        : client.set(keyWithNamespace, serializedValue),
+        ? client.set(keyWithNamespace, serializedRecord, 'PX', ttl)
+        : client.set(keyWithNamespace, serializedRecord),
       client.sadd(NAMESPACE, keyWithNamespace),
     ])
   }
 
   const exporter = async <T = unknown>(key: string) => {
     const keyWithNamespace = addNamespacePrefix(key)
-    const [serializedValue, ttl] = await Promise.all([
-      client.get(keyWithNamespace),
-      client.pttl(keyWithNamespace),
-    ])
+    const serializedRecord = await client.get(keyWithNamespace)
 
-    return isDefined(serializedValue)
-      ? {
-          value: deserialize<T>(serializedValue),
-          ...(ttl > 0 ? { expiresAt: expiresAt(ttl) } : {}),
-        }
+    return isDefined(serializedRecord)
+      ? deserialize<T>(serializedRecord)
       : undefined
   }
 

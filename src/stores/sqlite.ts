@@ -15,7 +15,6 @@ import { Store, StoreOptions, StoreRecord } from '../index.js'
 interface SqliteOptions extends StoreOptions {
   client: Database
   table?: string
-  debounce?: number
 }
 
 interface SqlRecord {
