@@ -53,9 +53,15 @@ export default (options: RedisOptions): Store => {
   const exporter = async <T = unknown>(key: string) => {
     const keyWithNamespace = addNamespacePrefix(key)
     const serializedRecord = await client.get(keyWithNamespace)
+    const record = isDefined(serializedRecord)
+      ? deserialize<StoreRecord<T>>(serializedRecord)
+      : undefined
 
-    return isDefined(serializedRecord)
-      ? deserialize<T>(serializedRecord)
+    return record
+      ? ({
+          value: typeof record.value !== 'undefined' ? record.value : undefined,
+          expiresAt: record.expiresAt ?? undefined,
+        } as StoreRecord<T>)
       : undefined
   }
 

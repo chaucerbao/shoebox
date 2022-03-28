@@ -76,7 +76,7 @@ export default (options: SqliteOptions): Store => {
 
     return {
       value: deserialize<T>(record.value),
-      ...(record.expires_at ? { expiresAt: record.expires_at } : {}),
+      expiresAt: record.expires_at ?? undefined,
     } as StoreRecord<T>
   }
 

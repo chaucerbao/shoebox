@@ -12,24 +12,15 @@ const redisClient = new Redis()
 const STORES = [
   {
     name: 'Map',
-    stores: [
-      map({ client: mapClient }),
-      map({ client: mapClient, namespace: 'namespace' }),
-    ],
+    createStore: (options = {}) => map({ ...options, client: mapClient }),
   },
   {
     name: 'Redis',
-    stores: [
-      redis({ client: redisClient }),
-      redis({ client: redisClient, namespace: 'namespace' }),
-    ],
+    createStore: (options = {}) => redis({ ...options, client: redisClient }),
   },
   {
     name: 'SQLite',
-    stores: [
-      sqlite({ client: sqliteClient }),
-      sqlite({ client: sqliteClient, namespace: 'namespace' }),
-    ],
+    createStore: (options = {}) => sqlite({ ...options, client: sqliteClient }),
   },
 ]
 
@@ -44,125 +35,147 @@ const VALUES = {
 }
 
 // Helpers
-const delay = (milliseconds) =>
+const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds))
 
 // Tests
-STORES.forEach(({ name: storeName, stores: [storeA, storeB] }) => {
-  // Use an index where the `value` is not null nor undefined
-  const KEY_INDEX = 3
-  const VALUE_ENTRIES = Object.entries(VALUES)
+STORES.forEach(({ name: storeName, createStore }) => {
   const TTL = 100
+  const VALUE_ENTRIES = Object.entries(VALUES)
 
-  // Helpers
-  const ensureAllValuesUndefined = (t, store) =>
+  const testKey = (index) => `key-${index}`
+
+  const setValues = ({ store }) =>
     Promise.all(
-      VALUE_ENTRIES.map(async (_, i) =>
-        t.is(await store.get(`key-${i}`), undefined)
-      )
+      VALUE_ENTRIES.map(([, value], i) => store.set(testKey(i), value))
     )
 
-  const ensureAllValuesDefined = (t, store) =>
-    Promise.all(
-      VALUE_ENTRIES.map(async ([, value], i) => {
-        t.deepEqual(await store.get(`key-${i}`), value)
-      })
-    )
-
-  const setAllValues = async (t, store) => {
-    await store.clear()
-    await ensureAllValuesUndefined(t, store)
-
-    await Promise.all(
-      VALUE_ENTRIES.map(([, value], i) => store.set(`key-${i}`, value))
-    )
-
-    await ensureAllValuesDefined(t, store)
-  }
-
-  const ensureValueUndefinedOnlyAtKeyIndex = (t, store) =>
+  const testValues = ({ t, store, exclude = [], isDefined }) =>
     Promise.all(
       VALUE_ENTRIES.map(async ([, value], i) => {
-        const storeValue = await store.get(`key-${i}`)
+        if (exclude.includes(testKey(i))) return
 
-        if (i === KEY_INDEX) t.is(storeValue, undefined)
-        else t.deepEqual(storeValue, value)
+        if (isDefined) t.deepEqual(await store.get(testKey(i)), value)
+        else t.is(await store.get(testKey(i)), undefined)
       })
     )
 
   // Tests
-  test.serial(`${storeName}: Set, get, and clear`, async (t) => {
-    await setAllValues(t, storeA)
-    await setAllValues(t, storeB)
+  test(`${storeName}: Namespaces`, async (t) => {
+    const storeA = createStore()
+    const storeB = createStore({ namespace: 'namespace' })
 
-    // Clear all key-values from one namespace
+    await setValues({ store: storeA })
+    await testValues({ isDefined: true, store: storeA, t })
+
+    await testValues({ isDefined: false, store: storeB, t })
+    await setValues({ store: storeB })
+    await testValues({ isDefined: true, store: storeB, t })
+
     await storeA.clear()
+    await testValues({ isDefined: false, store: storeA, t })
+    await testValues({ isDefined: true, store: storeB, t })
 
-    // Ensure all key-values are undefined for that namespace
-    await ensureAllValuesUndefined(t, storeA)
-    await ensureAllValuesDefined(t, storeB)
-  })
-
-  test.serial(`${storeName}: Set, get, and delete`, async (t) => {
-    await setAllValues(t, storeA)
-    await setAllValues(t, storeB)
-
-    // Delete the key-value at KEY_INDEX for one namespace
-    await storeA.delete(`key-${KEY_INDEX}`)
-
-    // Ensure that only the key-value at KEY_INDEX is undefined in that namespace
-    await ensureValueUndefinedOnlyAtKeyIndex(t, storeA)
-    await ensureAllValuesDefined(t, storeB)
-  })
-
-  test.serial(`${storeName}: Import and export with TTL`, async (t) => {
-    await storeA.clear()
     await storeB.clear()
-
-    const expiresAt = Date.now() + TTL
-
-    await storeA.import('key', { value: VALUES.string })
-    await storeB.import('key', { value: VALUES.string, expiresAt })
-
-    t.deepEqual(await storeA.export('key'), { value: VALUES.string })
-
-    const record = await storeB.export('key')
-    if (typeof record !== 'undefined') {
-      t.deepEqual(record.value, VALUES.string)
-
-      // Check that `expiresAt` is within a 5ms margin of error, since some
-      // Stores have their own TTL mechanism
-      t.assert(
-        typeof record.expiresAt !== 'undefined' &&
-          record.expiresAt < expiresAt + 5
-      )
-    } else {
-      t.fail()
-    }
-
-    await delay(TTL)
-
-    t.deepEqual(await storeA.export('key'), { value: VALUES.string })
-    t.is(await storeB.export('key'), undefined)
+    await testValues({ isDefined: false, store: storeB, t })
   })
 
-  test.serial(`${storeName}: Get and set with TTL`, async (t) => {
-    await setAllValues(t, storeA)
-    await setAllValues(t, storeB)
+  test(`${storeName}: Get`, async (t) => {
+    const store = createStore({ namespace: 'get' })
 
-    // Set the key-value at KEY_INDEX with a TTL in one namespace
-    const [, value] = VALUE_ENTRIES[KEY_INDEX]
-    storeA.set(`key-${KEY_INDEX}`, value, TTL)
+    await setValues({ store })
 
-    // Ensure all values are currently defined
-    await ensureAllValuesDefined(t, storeA)
-    await ensureAllValuesDefined(t, storeB)
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(await store.get(testKey(i)), value)
+      )
+    )
+  })
 
-    // Wait for the TTL to pass
-    await delay(TTL)
+  test(`${storeName}: Set`, async (t) => {
+    const store = createStore({ namespace: 'set' })
 
-    // Ensure that only the key-value at KEY_INDEX is undefined in that namespace
-    await ensureValueUndefinedOnlyAtKeyIndex(t, storeA)
-    await ensureAllValuesDefined(t, storeB)
+    await Promise.all(
+      VALUE_ENTRIES.map(([, value], i) => store.set(testKey(i), value))
+    )
+
+    await testValues({ isDefined: true, store, t })
+  })
+
+  test(`${storeName}: Import`, async (t) => {
+    const store = createStore({ namespace: 'import' })
+
+    await Promise.all(
+      VALUE_ENTRIES.map(([, value], i) => store.import(testKey(i), { value }))
+    )
+
+    await testValues({ isDefined: true, store, t })
+  })
+
+  test(`${storeName}: Export`, async (t) => {
+    const store = createStore({ namespace: 'export' })
+
+    await setValues({ store })
+
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(await store.export(testKey(i)), {
+          value,
+          expiresAt: undefined,
+        })
+      )
+    )
+  })
+
+  test(`${storeName}: Delete`, async (t) => {
+    const store = createStore({ namespace: 'delete' })
+
+    await setValues({ store })
+    await testValues({ isDefined: true, store, t })
+
+    await store.delete(testKey(3))
+    t.is(await store.get(testKey(3)), undefined)
+
+    await testValues({ isDefined: true, store, t, exclude: [testKey(3)] })
+  })
+
+  test(`${storeName}: Clear`, async (t) => {
+    const store = createStore({ namespace: 'clear' })
+
+    await setValues({ store })
+    await testValues({ isDefined: true, store, t })
+
+    await store.clear()
+
+    await testValues({ isDefined: false, store, t })
+  })
+
+  test(`${storeName}: Get and Set with TTL`, async (t) => {
+    const store = createStore({ namespace: 'get-and-set-with-ttl' })
+
+    await store.set(testKey(2), 'string', TTL)
+    t.is(await store.get(testKey(2)), 'string')
+
+    await wait(TTL * 0.8)
+    t.is(await store.get(testKey(2)), 'string')
+
+    await wait(TTL * 0.2)
+    t.is(await store.get(testKey(2)), undefined)
+  })
+
+  test(`${storeName}: Export and Import with 'expiresAt'`, async (t) => {
+    const store = createStore({
+      namespace: 'export-and-import-with-expires_at',
+    })
+    const expiresAt = new Date().getTime() + TTL
+
+    await store.import(testKey(2), { value: 'string', expiresAt })
+    t.deepEqual(await store.export(testKey(2)), { value: 'string', expiresAt })
+
+    await wait(TTL * 0.8)
+    t.deepEqual(await store.export(testKey(2)), { value: 'string', expiresAt })
+
+    await wait(TTL * 0.2)
+    t.is(await store.get(testKey(2)), undefined)
   })
 })
