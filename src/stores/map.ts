@@ -49,7 +49,10 @@ export default (options: MapOptions = {}): Store => {
         return undefined
       }
 
-      return record as StoreRecord<T>
+      return {
+        value: record.value,
+        expiresAt: record.expiresAt,
+      } as StoreRecord<T>
     }
 
     return undefined

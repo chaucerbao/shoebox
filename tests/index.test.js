@@ -2,7 +2,7 @@
 import test from 'ava'
 import SqliteDatabase from 'better-sqlite3'
 import Redis from 'ioredis'
-import { map, redis, sqlite } from '../dist/index.js'
+import { map, redis, sqlite, withDebounce } from '../dist/index.js'
 
 const mapClient = new Map()
 const sqliteClient = new SqliteDatabase(':memory:')
@@ -41,9 +41,11 @@ const wait = (milliseconds) =>
 // Tests
 STORES.forEach(({ name: storeName, createStore }) => {
   const TTL = 100
+  const DEBOUNCE_DELAY = 200
   const VALUE_ENTRIES = Object.entries(VALUES)
 
   const testKey = (index) => `key-${index}`
+  const testValue = (index) => VALUE_ENTRIES[index][1]
 
   const setValues = ({ store }) =>
     Promise.all(
@@ -177,5 +179,109 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
     await wait(TTL * 0.2)
     t.is(await store.get(testKey(2)), undefined)
+  })
+
+  test(`${storeName}: Debounced Get and Set`, async (t) => {
+    const store = createStore({ namespace: 'debounced-get-and-set' })
+    const debouncedStore = withDebounce(store, {
+      [testKey(2)]: DEBOUNCE_DELAY,
+    })
+
+    await store.clear()
+    await setValues({ store: debouncedStore })
+
+    await testValues({ isDefined: true, store: debouncedStore, t })
+    await testValues({ isDefined: true, exclude: [testKey(2)], store, t })
+    t.is(await store.get(testKey(2)), undefined)
+
+    await wait(DEBOUNCE_DELAY * 0.8)
+    t.is(await store.get(testKey(2)), undefined)
+
+    await wait(DEBOUNCE_DELAY * 0.2)
+    t.is(await store.get(testKey(2)), testValue(2))
+  })
+
+  test(`${storeName}: Debounced Export and Import`, async (t) => {
+    const store = createStore({ namespace: 'debounced-export-and-import' })
+    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+
+    await store.clear()
+    await Promise.all(
+      VALUE_ENTRIES.map(([, value], i) =>
+        debouncedStore.import(testKey(i), { value })
+      )
+    )
+
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(await debouncedStore.export(testKey(i)), {
+          value,
+          expiresAt: undefined,
+        })
+      )
+    )
+
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(
+          await store.export(testKey(i)),
+          i !== 2 ? { value, expiresAt: undefined } : undefined
+        )
+      )
+    )
+
+    await wait(DEBOUNCE_DELAY * 0.8)
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(
+          await store.export(testKey(i)),
+          i !== 2 ? { value, expiresAt: undefined } : undefined
+        )
+      )
+    )
+
+    await wait(DEBOUNCE_DELAY * 0.2)
+    await Promise.all(
+      VALUE_ENTRIES.map(async ([, value], i) =>
+        t.deepEqual(await store.export(testKey(i)), {
+          value,
+          expiresAt: undefined,
+        })
+      )
+    )
+  })
+
+  test(`${storeName}: Debounced Delete`, async (t) => {
+    const store = createStore({ namespace: 'debounced-delete' })
+    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+
+    await setValues({ store })
+    await testValues({ isDefined: true, store, t })
+    await testValues({ isDefined: true, store: debouncedStore, t })
+
+    await debouncedStore.delete(testKey(2))
+
+    t.is(await debouncedStore.get(testKey(2)), undefined)
+    t.deepEqual(await store.get(testKey(2)), testValue(2))
+
+    await wait(DEBOUNCE_DELAY * 0.8)
+    t.deepEqual(await store.get(testKey(2)), testValue(2))
+
+    await wait(DEBOUNCE_DELAY * 0.2)
+    t.is(await store.get(testKey(2)), undefined)
+  })
+
+  test(`${storeName}: Debounced Clear`, async (t) => {
+    const store = createStore({ namespace: 'debounced-clear' })
+    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+
+    await setValues({ store })
+    await testValues({ isDefined: true, store, t })
+    await testValues({ isDefined: true, store: debouncedStore, t })
+
+    await debouncedStore.clear()
+
+    await testValues({ isDefined: false, store, t })
+    await testValues({ isDefined: false, store: debouncedStore, t })
   })
 })

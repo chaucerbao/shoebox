@@ -7,7 +7,7 @@ import sqlite from './stores/sqlite.js'
 // Type Definitions
 export interface StoreRecord<T = unknown> {
   value: T
-  expiresAt?: number
+  expiresAt: number | undefined
 }
 
 export interface Store {
@@ -25,8 +25,8 @@ export interface StoreOptions {
 
 // Helpers
 export const withDebounce = (
-  delays: Record<string, number>,
-  store: Store
+  store: Store,
+  delays: Record<string, number>
 ): Store => {
   const cache = map()
   const timeout = new Map<string, ReturnType<typeof setTimeout>>()
@@ -66,6 +66,7 @@ export const withDebounce = (
   }
 
   const clear = async () => {
+    // Not debounced, only key-based writes can be debounced
     await Promise.all([cache.clear(), store.clear()])
   }
 
