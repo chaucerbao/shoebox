@@ -52,7 +52,7 @@ export default (options: SqliteOptions): Store => {
       .run(namespace, key)
   }
 
-  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
+  const importer = async <T>(key: string, record: StoreRecord<T>) => {
     client
       .prepare(
         `INSERT OR REPLACE INTO [${table}] (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`
@@ -60,7 +60,7 @@ export default (options: SqliteOptions): Store => {
       .run(namespace, key, serialize(record.value), record.expiresAt)
   }
 
-  const exporter = async <T = unknown>(key: string) => {
+  const exporter = async <T>(key: string) => {
     const record = client
       .prepare(
         `SELECT * FROM [${table}] WHERE namespace = ? AND key = ? LIMIT 1`

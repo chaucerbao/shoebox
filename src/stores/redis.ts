@@ -35,7 +35,7 @@ export default (options: RedisOptions): Store => {
     ])
   }
 
-  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
+  const importer = async <T>(key: string, record: StoreRecord<T>) => {
     const keyWithNamespace = addNamespacePrefix(key)
     const serializedRecord = serialize(record)
     const ttl = isDefined(record.expiresAt)
@@ -50,7 +50,7 @@ export default (options: RedisOptions): Store => {
     ])
   }
 
-  const exporter = async <T = unknown>(key: string) => {
+  const exporter = async <T>(key: string) => {
     const keyWithNamespace = addNamespacePrefix(key)
     const serializedRecord = await client.get(keyWithNamespace)
     const record = isDefined(serializedRecord)

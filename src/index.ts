@@ -5,16 +5,16 @@ import redis from './stores/redis.js'
 import sqlite from './stores/sqlite.js'
 
 // Type Definitions
-export interface StoreRecord<T = unknown> {
+export interface StoreRecord<T> {
   value: T
   expiresAt: number | undefined
 }
 
 export interface Store {
-  import: <T = unknown>(key: string, value: StoreRecord<T>) => Promise<void>
-  export: <T = unknown>(key: string) => Promise<StoreRecord<T> | undefined>
-  get: <T = unknown>(key: string) => Promise<T | undefined>
-  set: <T = unknown>(key: string, value: T, ttl?: number) => Promise<void>
+  import: <T>(key: string, value: StoreRecord<T>) => Promise<void>
+  export: <T>(key: string) => Promise<StoreRecord<T> | undefined>
+  get: <T>(key: string) => Promise<T | undefined>
+  set: <T>(key: string, value: T, ttl?: number) => Promise<void>
   delete: (key: string) => Promise<void>
   clear: () => Promise<void>
 }
@@ -76,13 +76,13 @@ export const withDebounce = (
       store: () => store.delete(key),
     })
 
-  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) =>
+  const importer = async <T>(key: string, record: StoreRecord<T>) =>
     debounceWrite(key, {
       cache: () => cache.import<T>(key, record),
       store: () => store.import<T>(key, record),
     })
 
-  const exporter = async <T = unknown>(key: string) => {
+  const exporter = async <T>(key: string) => {
     const delay = delays[key]
 
     // Not debouncing, so return the record from the Store

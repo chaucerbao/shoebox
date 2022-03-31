@@ -22,11 +22,11 @@ export const deserialize = <T = unknown>(serializedValue: string) =>
 
 // Store Helpers
 export const setter =
-  (importer: Store['import']) =>
-  <T = unknown>(key: string, value: T, ttl?: number) =>
+  <T>(importer: Store['import']) =>
+  (key: string, value: T, ttl?: number) =>
     importer(key, { value, expiresAt: expiresAt(ttl) })
 
 export const getter =
-  (exporter: Store['export']) =>
-  async <T = unknown>(key: string) =>
+  <T>(exporter: Store['export']) =>
+  async (key: string) =>
     (await exporter(key))?.value as T

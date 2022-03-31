@@ -10,13 +10,13 @@ import { Store, StoreOptions, StoreRecord } from '../index.js'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
-  client?: Map<string, StoreRecord>
+  client?: Map<string, StoreRecord<unknown>>
 }
 
 // Store
 export default (options: MapOptions = {}): Store => {
   const {
-    client = new Map<string, StoreRecord>(),
+    client = new Map<string, StoreRecord<unknown>>(),
     namespace = DEFAULT_NAMESPACE,
   } = options
 
@@ -35,11 +35,11 @@ export default (options: MapOptions = {}): Store => {
     client.delete(addNamespacePrefix(key))
   }
 
-  const importer = async <T = unknown>(key: string, record: StoreRecord<T>) => {
+  const importer = async <T>(key: string, record: StoreRecord<T>) => {
     client.set(addNamespacePrefix(key), record)
   }
 
-  const exporter = async <T = unknown>(key: string) => {
+  const exporter = async <T>(key: string) => {
     const record = client.get(addNamespacePrefix(key))
 
     if (isDefined(record)) {
