@@ -1,13 +1,13 @@
 // Imports
 import { Database } from 'better-sqlite3'
 import {
+  asyncify,
   DEFAULT_NAMESPACE,
   deserialize,
-  getter,
+  expiresAt,
   isDefined,
   isExpired,
   serialize,
-  setter,
 } from '../helpers.js'
 import { Store, StoreOptions, StoreRecord } from '../index.js'
 
@@ -25,7 +25,7 @@ interface SqlRecord {
 }
 
 // Store
-export default (options: SqliteOptions): Store => {
+export const sqliteSync = (options: SqliteOptions) => {
   const { client, table = 'shoebox', namespace = DEFAULT_NAMESPACE } = options
 
   client
@@ -42,17 +42,17 @@ export default (options: SqliteOptions): Store => {
     )
     .run()
 
-  const clear = async () => {
+  const clear = () => {
     client.prepare(`DELETE FROM [${table}] WHERE namespace = ?`).run(namespace)
   }
 
-  const remove = async (key: string) => {
+  const remove = (key: string) => {
     client
       .prepare(`DELETE FROM [${table}] WHERE namespace = ? AND key = ?`)
       .run(namespace, key)
   }
 
-  const importer = async <T>(key: string, record: StoreRecord<T>) => {
+  const importer = <T>(key: string, record: StoreRecord<T>) => {
     client
       .prepare(
         `INSERT OR REPLACE INTO [${table}] (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`
@@ -60,7 +60,7 @@ export default (options: SqliteOptions): Store => {
       .run(namespace, key, serialize(record.value), record.expiresAt)
   }
 
-  const exporter = async <T>(key: string) => {
+  const exporter = <T>(key: string) => {
     const record = client
       .prepare(
         `SELECT * FROM [${table}] WHERE namespace = ? AND key = ? LIMIT 1`
@@ -83,9 +83,23 @@ export default (options: SqliteOptions): Store => {
   return {
     import: importer,
     export: exporter,
-    get: getter(exporter),
-    set: setter(importer),
+    get: <T>(key: string) => exporter(key)?.value as T,
+    set: <T>(key: string, value: T, ttl?: number) =>
+      importer(key, { value, expiresAt: expiresAt(ttl) }),
     delete: remove,
     clear,
+  }
+}
+
+export default (options: SqliteOptions): Store => {
+  const sqlite = sqliteSync(options)
+
+  return {
+    import: asyncify(sqlite.import),
+    export: async (key: string) => sqlite.export(key),
+    get: async (key: string) => sqlite.get(key),
+    set: asyncify(sqlite.set),
+    delete: asyncify(sqlite.delete),
+    clear: asyncify(sqlite.clear),
   }
 }

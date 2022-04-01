@@ -2,7 +2,7 @@
 import { getter, isDefined, setter } from './helpers.js'
 import map, { mapSync } from './stores/map.js'
 import redis from './stores/redis.js'
-import sqlite from './stores/sqlite.js'
+import sqlite, { sqliteSync } from './stores/sqlite.js'
 
 // Type Definitions
 export interface StoreRecord<T> {
@@ -110,4 +110,4 @@ export const withDebounce = (
 }
 
 // Exports
-export { map, mapSync, redis, sqlite }
+export { map, mapSync, redis, sqlite, sqliteSync }
