@@ -21,12 +21,17 @@ export const deserialize = <T = unknown>(serializedValue: string) =>
   JSON.parse(serializedValue, (_, v) => (v === UNDEFINED ? undefined : v)) as T
 
 // Store Helpers
+export const asyncify =
+  <T extends unknown[], U>(fn: (...params: T) => U) =>
+  async (...params: T) =>
+    fn(...params)
+
 export const setter =
-  <T>(importer: Store['import']) =>
-  (key: string, value: T, ttl?: number) =>
+  (importer: Store['import']) =>
+  <T>(key: string, value: T, ttl?: number) =>
     importer(key, { value, expiresAt: expiresAt(ttl) })
 
 export const getter =
-  <T>(exporter: Store['export']) =>
-  async (key: string) =>
+  (exporter: Store['export']) =>
+  async <T>(key: string) =>
     (await exporter(key))?.value as T

@@ -1,10 +1,10 @@
 // Imports
 import {
+  asyncify,
   DEFAULT_NAMESPACE,
-  getter,
+  expiresAt,
   isDefined,
   isExpired,
-  setter,
 } from '../helpers.js'
 import { Store, StoreOptions, StoreRecord } from '../index.js'
 
@@ -14,7 +14,7 @@ interface MapOptions extends StoreOptions {
 }
 
 // Store
-export default (options: MapOptions = {}): Store => {
+export const mapSync = (options: MapOptions = {}) => {
   const {
     client = new Map<string, StoreRecord<unknown>>(),
     namespace = DEFAULT_NAMESPACE,
@@ -22,7 +22,7 @@ export default (options: MapOptions = {}): Store => {
 
   const addNamespacePrefix = (key: string) => [namespace, key].join(':')
 
-  const clear = async () => {
+  const clear = () => {
     const namespacePrefix = addNamespacePrefix('')
 
     client.forEach((_, keyWithNamespace) => {
@@ -31,20 +31,20 @@ export default (options: MapOptions = {}): Store => {
     })
   }
 
-  const remove = async (key: string) => {
+  const remove = (key: string) => {
     client.delete(addNamespacePrefix(key))
   }
 
-  const importer = async <T>(key: string, record: StoreRecord<T>) => {
+  const importer = <T>(key: string, record: StoreRecord<T>) => {
     client.set(addNamespacePrefix(key), record)
   }
 
-  const exporter = async <T>(key: string) => {
+  const exporter = <T>(key: string) => {
     const record = client.get(addNamespacePrefix(key))
 
     if (isDefined(record)) {
       if (isExpired(record.expiresAt)) {
-        await remove(key)
+        remove(key)
 
         return undefined
       }
@@ -61,9 +61,23 @@ export default (options: MapOptions = {}): Store => {
   return {
     import: importer,
     export: exporter,
-    get: getter(exporter),
-    set: setter(importer),
+    get: <T>(key: string) => exporter(key)?.value as T,
+    set: <T>(key: string, value: T, ttl?: number) =>
+      importer(key, { value, expiresAt: expiresAt(ttl) }),
     delete: remove,
     clear,
+  }
+}
+
+export default (options: MapOptions = {}): Store => {
+  const map = mapSync(options)
+
+  return {
+    import: asyncify(map.import),
+    export: async (key: string) => map.export(key),
+    get: async (key: string) => map.get(key),
+    set: asyncify(map.set),
+    delete: asyncify(map.delete),
+    clear: asyncify(map.clear),
   }
 }

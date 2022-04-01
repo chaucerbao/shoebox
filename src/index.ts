@@ -1,6 +1,6 @@
 // Imports
 import { getter, isDefined, setter } from './helpers.js'
-import map from './stores/map.js'
+import map, { mapSync } from './stores/map.js'
 import redis from './stores/redis.js'
 import sqlite from './stores/sqlite.js'
 
@@ -110,4 +110,4 @@ export const withDebounce = (
 }
 
 // Exports
-export { map, redis, sqlite }
+export { map, mapSync, redis, sqlite }
