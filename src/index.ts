@@ -28,7 +28,7 @@ export const withDebounce = (
   store: Store,
   delays: Record<string, number>
 ): Store => {
-  const cache = map()
+  const cache = mapSync()
   const timeout = new Map<string, ReturnType<typeof setTimeout>>()
 
   const resetTimeout = (key: string) => {
@@ -42,7 +42,7 @@ export const withDebounce = (
 
   const debounceWrite = async (
     key: string,
-    writeTo: { cache: () => Promise<void>; store: () => Promise<void> }
+    writeTo: { cache: () => void; store: () => Promise<void> }
   ) => {
     const delay = delays[key]
 
@@ -53,7 +53,7 @@ export const withDebounce = (
     resetTimeout(key)
 
     // Write to the Cache
-    await writeTo.cache()
+    writeTo.cache()
 
     // Schedule writing to the Store after a delay
     timeout.set(
@@ -67,7 +67,8 @@ export const withDebounce = (
 
   const clear = async () => {
     // Not debounced, only key-based writes can be debounced
-    await Promise.all([cache.clear(), store.clear()])
+    cache.clear()
+    await store.clear()
   }
 
   const remove = async (key: string) =>
@@ -89,12 +90,12 @@ export const withDebounce = (
     if (!isDefined(delay)) return store.export<T>(key)
 
     // If it exists, return the record from the Cache
-    const cacheRecord = await cache.export<T>(key)
+    const cacheRecord = cache.export<T>(key)
     if (isDefined(cacheRecord)) return cacheRecord
 
     // If it doesn't exist, check the Store
     const storeRecord = await store.export<T>(key)
-    if (isDefined(storeRecord)) await cache.import<T>(key, storeRecord)
+    if (isDefined(storeRecord)) cache.import<T>(key, storeRecord)
 
     return storeRecord
   }
