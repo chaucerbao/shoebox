@@ -284,4 +284,24 @@ STORES.forEach(({ name: storeName, createStore }) => {
     await testValues({ isDefined: false, store, t })
     await testValues({ isDefined: false, store: debouncedStore, t })
   })
+
+  test(`${storeName}: Debounced RegEx Key Support`, async (t) => {
+    const store = createStore({ namespace: 'debounced-regex-key-support' })
+    const debouncedStore = withDebounce(store, {
+      [/-2$/]: DEBOUNCE_DELAY,
+    })
+
+    await store.clear()
+    await setValues({ store: debouncedStore })
+
+    await testValues({ isDefined: true, store: debouncedStore, t })
+    await testValues({ isDefined: true, exclude: [testKey(2)], store, t })
+    t.is(await store.get(testKey(2)), undefined)
+
+    await wait(DEBOUNCE_DELAY * 0.8)
+    t.is(await store.get(testKey(2)), undefined)
+
+    await wait(DEBOUNCE_DELAY * 0.2)
+    t.is(await store.get(testKey(2)), testValue(2))
+  })
 })

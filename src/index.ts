@@ -29,7 +29,21 @@ export const withDebounce = (
   delays: Record<string, number>
 ): Store => {
   const cache = mapSync()
+  const delayEntries = Object.entries(delays)
   const timeout = new Map<string, ReturnType<typeof setTimeout>>()
+  const REGEX_PATTERN = /^\/(.*)\/(.*)$/
+
+  const findDelay = (key: string) => {
+    const matchFound = delayEntries.find(([delayKey]) => {
+      const [, pattern, flags] = delayKey.match(REGEX_PATTERN) ?? []
+
+      return pattern?.length
+        ? new RegExp(pattern, flags).test(key)
+        : delayKey === key
+    })
+
+    return isDefined(matchFound) ? matchFound[1] : undefined
+  }
 
   const resetTimeout = (key: string) => {
     const timeoutKey = timeout.get(key)
@@ -44,7 +58,7 @@ export const withDebounce = (
     key: string,
     writeTo: { cache: () => void; store: () => Promise<void> }
   ) => {
-    const delay = delays[key]
+    const delay = findDelay(key)
 
     // Not debouncing, so write to the Store immediately
     if (!isDefined(delay)) return writeTo.store()
@@ -84,7 +98,7 @@ export const withDebounce = (
     })
 
   const exporter = async <T>(key: string) => {
-    const delay = delays[key]
+    const delay = findDelay(key)
 
     // Not debouncing, so return the record from the Store
     if (!isDefined(delay)) return store.export<T>(key)
