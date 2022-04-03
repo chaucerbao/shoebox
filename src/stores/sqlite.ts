@@ -1,15 +1,15 @@
 // Imports
 import { Database } from 'better-sqlite3'
 import {
-  asyncify,
   DEFAULT_NAMESPACE,
   deserialize,
-  expiresAt,
+  expandStoreSync,
   isDefined,
   isExpired,
   serialize,
+  toStoreAsync,
 } from '../helpers.js'
-import { Store, StoreOptions, StoreRecord } from '../index.js'
+import { StoreAsync, StoreOptions, StoreRecord, StoreSync } from '../types.js'
 
 // Type Definitions
 interface SqliteOptions extends StoreOptions {
@@ -25,7 +25,7 @@ interface SqlRecord {
 }
 
 // Store
-export const sqliteSync = (options: SqliteOptions) => {
+const sqliteStore = (options: SqliteOptions) => {
   const { client, table = 'shoebox', namespace = DEFAULT_NAMESPACE } = options
 
   client
@@ -83,23 +83,13 @@ export const sqliteSync = (options: SqliteOptions) => {
   return {
     import: importer,
     export: exporter,
-    get: <T>(key: string) => exporter(key)?.value as T,
-    set: <T>(key: string, value: T, ttl?: number) =>
-      importer(key, { value, expiresAt: expiresAt(ttl) }),
     delete: remove,
     clear,
   }
 }
 
-export default (options: SqliteOptions): Store => {
-  const sqlite = sqliteSync(options)
+export const sqliteSync = (options: SqliteOptions): StoreSync =>
+  expandStoreSync(sqliteStore(options))
 
-  return {
-    import: asyncify(sqlite.import),
-    export: async (key: string) => sqlite.export(key),
-    get: async (key: string) => sqlite.get(key),
-    set: asyncify(sqlite.set),
-    delete: asyncify(sqlite.delete),
-    clear: asyncify(sqlite.clear),
-  }
-}
+export const sqliteAsync = (options: SqliteOptions): StoreAsync =>
+  toStoreAsync(sqliteSync(options))

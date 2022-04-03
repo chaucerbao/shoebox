@@ -1,12 +1,12 @@
 // Imports
 import {
-  asyncify,
   DEFAULT_NAMESPACE,
-  expiresAt,
+  expandStoreSync,
   isDefined,
   isExpired,
+  toStoreAsync,
 } from '../helpers.js'
-import { Store, StoreOptions, StoreRecord } from '../index.js'
+import { StoreAsync, StoreOptions, StoreRecord, StoreSync } from '../types.js'
 
 // Type Definitions
 interface MapOptions extends StoreOptions {
@@ -14,7 +14,7 @@ interface MapOptions extends StoreOptions {
 }
 
 // Store
-export const mapSync = (options: MapOptions = {}) => {
+const mapStore = (options: MapOptions = {}) => {
   const {
     client = new Map<string, StoreRecord<unknown>>(),
     namespace = DEFAULT_NAMESPACE,
@@ -61,23 +61,13 @@ export const mapSync = (options: MapOptions = {}) => {
   return {
     import: importer,
     export: exporter,
-    get: <T>(key: string) => exporter(key)?.value as T,
-    set: <T>(key: string, value: T, ttl?: number) =>
-      importer(key, { value, expiresAt: expiresAt(ttl) }),
     delete: remove,
     clear,
   }
 }
 
-export default (options: MapOptions = {}): Store => {
-  const map = mapSync(options)
+export const mapSync = (options: MapOptions = {}): StoreSync =>
+  expandStoreSync(mapStore(options))
 
-  return {
-    import: asyncify(map.import),
-    export: async (key: string) => map.export(key),
-    get: async (key: string) => map.get(key),
-    set: asyncify(map.set),
-    delete: asyncify(map.delete),
-    clear: asyncify(map.clear),
-  }
-}
+export const mapAsync = (options: MapOptions = {}): StoreAsync =>
+  toStoreAsync(mapSync(options))

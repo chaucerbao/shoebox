@@ -3,12 +3,11 @@ import { Redis } from 'ioredis'
 import {
   DEFAULT_NAMESPACE,
   deserialize,
-  getter,
+  expandStoreAsync,
   isDefined,
   serialize,
-  setter,
 } from '../helpers.js'
-import { Store, StoreOptions, StoreRecord } from '../index.js'
+import { StoreAsync, StoreOptions, StoreRecord } from '../types.js'
 
 // Type Definitions
 interface RedisOptions extends StoreOptions {
@@ -16,7 +15,7 @@ interface RedisOptions extends StoreOptions {
 }
 
 // Store
-export default (options: RedisOptions): Store => {
+const redisStore = (options: RedisOptions) => {
   const { client, namespace = DEFAULT_NAMESPACE } = options
 
   const NAMESPACE = ['namespace', namespace].join(':')
@@ -68,9 +67,10 @@ export default (options: RedisOptions): Store => {
   return {
     import: importer,
     export: exporter,
-    get: getter(exporter),
-    set: setter(importer),
     delete: remove,
     clear,
   }
 }
+
+export const redisAsync = (options: RedisOptions): StoreAsync =>
+  expandStoreAsync(redisStore(options))

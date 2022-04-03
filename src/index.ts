@@ -1,33 +1,15 @@
 // Imports
-import { getter, isDefined, setter } from './helpers.js'
-import map, { mapSync } from './stores/map.js'
-import redis from './stores/redis.js'
-import sqlite, { sqliteSync } from './stores/sqlite.js'
-
-// Type Definitions
-export interface StoreRecord<T> {
-  value: T
-  expiresAt: number | undefined
-}
-
-export interface Store {
-  import: <T>(key: string, value: StoreRecord<T>) => Promise<void>
-  export: <T>(key: string) => Promise<StoreRecord<T> | undefined>
-  get: <T>(key: string) => Promise<T | undefined>
-  set: <T>(key: string, value: T, ttl?: number) => Promise<void>
-  delete: (key: string) => Promise<void>
-  clear: () => Promise<void>
-}
-
-export interface StoreOptions {
-  namespace?: string
-}
+import { expandStoreAsync, isDefined } from './helpers.js'
+import { mapAsync, mapSync } from './stores/map.js'
+import { redisAsync } from './stores/redis.js'
+import { sqliteAsync, sqliteSync } from './stores/sqlite.js'
+import { StoreAsync, StoreRecord } from './types.js'
 
 // Helpers
 export const withDebounce = (
-  store: Store,
+  store: StoreAsync,
   delays: Record<string, number>
-): Store => {
+): StoreAsync => {
   const cache = mapSync()
   const delayEntries = Object.entries(delays)
   const timeout = new Map<string, ReturnType<typeof setTimeout>>()
@@ -114,15 +96,13 @@ export const withDebounce = (
     return storeRecord
   }
 
-  return {
+  return expandStoreAsync({
     import: importer,
     export: exporter,
-    get: getter(exporter),
-    set: setter(importer),
     delete: remove,
     clear,
-  }
+  })
 }
 
 // Exports
-export { map, mapSync, redis, sqlite, sqliteSync }
+export { mapAsync, mapSync, redisAsync, sqliteAsync, sqliteSync }

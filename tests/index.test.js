@@ -2,7 +2,12 @@
 import test from 'ava'
 import SqliteDatabase from 'better-sqlite3'
 import Redis from 'ioredis'
-import { map, redis, sqlite, withDebounce } from '../dist/index.js'
+import {
+  mapAsync,
+  redisAsync,
+  sqliteAsync,
+  withDebounce,
+} from '../dist/index.js'
 
 const mapClient = new Map()
 const sqliteClient = new SqliteDatabase(':memory:')
@@ -12,15 +17,17 @@ const redisClient = new Redis()
 const STORES = [
   {
     name: 'Map',
-    createStore: (options = {}) => map({ ...options, client: mapClient }),
+    createStore: (options = {}) => mapAsync({ ...options, client: mapClient }),
   },
   {
     name: 'Redis',
-    createStore: (options = {}) => redis({ ...options, client: redisClient }),
+    createStore: (options = {}) =>
+      redisAsync({ ...options, client: redisClient }),
   },
   {
     name: 'SQLite',
-    createStore: (options = {}) => sqlite({ ...options, client: sqliteClient }),
+    createStore: (options = {}) =>
+      sqliteAsync({ ...options, client: sqliteClient }),
   },
 ]
 
