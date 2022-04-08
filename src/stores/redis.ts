@@ -4,6 +4,7 @@ import {
   DEFAULT_NAMESPACE,
   deserialize,
   expandStoreAsync,
+  exportStoreRecord,
   isDefined,
   serialize,
 } from '../helpers.js'
@@ -34,34 +35,29 @@ const redisStore = (options: RedisOptions) => {
     ])
   }
 
-  const importer = async <T>(key: string, record: StoreRecord<T>) => {
+  const importer = async <T>(key: string, storeRecord: StoreRecord<T>) => {
     const keyWithNamespace = addNamespacePrefix(key)
-    const serializedRecord = serialize(record)
-    const ttl = isDefined(record.expiresAt)
-      ? record.expiresAt - Date.now()
+    const serializedStoreRecord = serialize(storeRecord)
+    const ttl = isDefined(storeRecord.expiresAt)
+      ? storeRecord.expiresAt - Date.now()
       : undefined
 
     await Promise.all([
       isDefined(ttl)
-        ? client.set(keyWithNamespace, serializedRecord, 'PX', ttl)
-        : client.set(keyWithNamespace, serializedRecord),
+        ? client.set(keyWithNamespace, serializedStoreRecord, 'PX', ttl)
+        : client.set(keyWithNamespace, serializedStoreRecord),
       client.sadd(NAMESPACE, keyWithNamespace),
     ])
   }
 
   const exporter = async <T>(key: string) => {
     const keyWithNamespace = addNamespacePrefix(key)
-    const serializedRecord = await client.get(keyWithNamespace)
-    const record = isDefined(serializedRecord)
-      ? deserialize<StoreRecord<T>>(serializedRecord)
+    const serializedStoreRecord = await client.get(keyWithNamespace)
+    const storeRecord = isDefined(serializedStoreRecord)
+      ? deserialize<StoreRecord<T>>(serializedStoreRecord)
       : undefined
 
-    return record
-      ? ({
-          value: typeof record.value !== 'undefined' ? record.value : undefined,
-          expiresAt: record.expiresAt ?? undefined,
-        } as StoreRecord<T>)
-      : undefined
+    return exportStoreRecord<T>(storeRecord)
   }
 
   return {

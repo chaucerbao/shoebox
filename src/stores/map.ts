@@ -2,8 +2,7 @@
 import {
   DEFAULT_NAMESPACE,
   expandStoreSync,
-  isDefined,
-  isExpired,
+  exportStoreRecord,
   toStoreAsync,
 } from '../helpers.js'
 import { StoreAsync, StoreOptions, StoreRecord, StoreSync } from '../types.js'
@@ -35,27 +34,14 @@ const mapStore = (options: MapOptions = {}) => {
     client.delete(addNamespacePrefix(key))
   }
 
-  const importer = <T>(key: string, record: StoreRecord<T>) => {
-    client.set(addNamespacePrefix(key), record)
+  const importer = <T>(key: string, storeRecord: StoreRecord<T>) => {
+    client.set(addNamespacePrefix(key), storeRecord)
   }
 
   const exporter = <T>(key: string) => {
-    const record = client.get(addNamespacePrefix(key))
+    const storeRecord = client.get(addNamespacePrefix(key)) as StoreRecord<T>
 
-    if (isDefined(record)) {
-      if (isExpired(record.expiresAt)) {
-        remove(key)
-
-        return undefined
-      }
-
-      return {
-        value: record.value,
-        expiresAt: record.expiresAt,
-      } as StoreRecord<T>
-    }
-
-    return undefined
+    return exportStoreRecord<T>(storeRecord, { onExpire: () => remove(key) })
   }
 
   return {

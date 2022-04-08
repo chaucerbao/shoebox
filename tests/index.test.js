@@ -47,7 +47,7 @@ const wait = (milliseconds) =>
 
 // Tests
 STORES.forEach(({ name: storeName, createStore }) => {
-  const TTL = 100
+  const TTL = 250
   const DEBOUNCE_DELAY = 200
   const VALUE_ENTRIES = Object.entries(VALUES)
 
@@ -176,7 +176,7 @@ STORES.forEach(({ name: storeName, createStore }) => {
     const store = createStore({
       namespace: 'export-and-import-with-expires_at',
     })
-    const expiresAt = new Date().getTime() + TTL
+    const expiresAt = Date.now() + TTL
 
     await store.import(testKey(2), { value: 'string', expiresAt })
     t.deepEqual(await store.export(testKey(2)), { value: 'string', expiresAt })

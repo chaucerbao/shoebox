@@ -4,8 +4,8 @@ import {
   DEFAULT_NAMESPACE,
   deserialize,
   expandStoreSync,
+  exportStoreRecord,
   isDefined,
-  isExpired,
   serialize,
   toStoreAsync,
 } from '../helpers.js'
@@ -52,32 +52,29 @@ const sqliteStore = (options: SqliteOptions) => {
       .run(namespace, key)
   }
 
-  const importer = <T>(key: string, record: StoreRecord<T>) => {
+  const importer = <T>(key: string, storeRecord: StoreRecord<T>) => {
     client
       .prepare(
         `INSERT OR REPLACE INTO [${table}] (namespace, key, value, expires_at) VALUES (?, ?, ?, ?)`
       )
-      .run(namespace, key, serialize(record.value), record.expiresAt)
+      .run(namespace, key, serialize(storeRecord.value), storeRecord.expiresAt)
   }
 
   const exporter = <T>(key: string) => {
-    const record = client
+    const sqlRecord = client
       .prepare(
         `SELECT * FROM [${table}] WHERE namespace = ? AND key = ? LIMIT 1`
       )
       .get(namespace, key) as SqlRecord | undefined
 
-    if (!isDefined(record)) return undefined
+    const storeRecord = isDefined(sqlRecord)
+      ? {
+          value: deserialize<T>(sqlRecord.value),
+          expiresAt: sqlRecord.expires_at,
+        }
+      : undefined
 
-    if (isExpired(record.expires_at)) {
-      remove(key)
-      return undefined
-    }
-
-    return {
-      value: deserialize<T>(record.value),
-      expiresAt: record.expires_at ?? undefined,
-    } as StoreRecord<T>
+    return exportStoreRecord<T>(storeRecord, { onExpire: () => remove(key) })
   }
 
   return {

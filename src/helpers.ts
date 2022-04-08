@@ -3,6 +3,7 @@ import {
   StoreAsync,
   StoreCoreAsync,
   StoreCoreSync,
+  StoreRecord,
   StoreSync,
 } from './types.js'
 
@@ -27,6 +28,26 @@ export const deserialize = <T = unknown>(serializedValue: string) =>
   JSON.parse(serializedValue, (_, v) => (v === UNDEFINED ? undefined : v)) as T
 
 // Store Helpers
+export const exportStoreRecord = <T>(
+  storeRecord: StoreRecord<T> | undefined,
+  {
+    onExpire,
+  }: { onExpire?: (storeRecord: StoreRecord<T>) => void | Promise<void> } = {}
+) => {
+  if (!isDefined(storeRecord)) return undefined
+
+  if (isExpired(storeRecord.expiresAt)) {
+    void onExpire?.(storeRecord)
+
+    return undefined
+  }
+
+  return {
+    value: storeRecord.value as T,
+    expiresAt: storeRecord.expiresAt ?? undefined,
+  }
+}
+
 const asyncify =
   <T extends unknown[], U>(fn: (...params: T) => U) =>
   async (...params: T) =>
