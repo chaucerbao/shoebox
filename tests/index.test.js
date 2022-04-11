@@ -2,12 +2,7 @@
 import test from 'ava'
 import SqliteDatabase from 'better-sqlite3'
 import Redis from 'ioredis'
-import {
-  mapAsync,
-  redisAsync,
-  sqliteAsync,
-  withDebounce,
-} from '../dist/index.js'
+import { mapAsync, redisAsync, sqliteAsync } from '../dist/index.js'
 
 const mapClient = new Map()
 const sqliteClient = new SqliteDatabase(':memory:')
@@ -190,8 +185,11 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
   test(`${storeName}: Debounced Get and Set`, async (t) => {
     const store = createStore({ namespace: 'debounced-get-and-set' })
-    const debouncedStore = withDebounce(store, {
-      [testKey(2)]: DEBOUNCE_DELAY,
+    const debouncedStore = createStore({
+      namespace: 'debounced-get-and-set',
+      debounce: {
+        [testKey(2)]: DEBOUNCE_DELAY,
+      },
     })
 
     await store.clear()
@@ -210,7 +208,12 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
   test(`${storeName}: Debounced Export and Import`, async (t) => {
     const store = createStore({ namespace: 'debounced-export-and-import' })
-    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+    const debouncedStore = createStore({
+      namespace: 'debounced-export-and-import',
+      debounce: {
+        [testKey(2)]: DEBOUNCE_DELAY,
+      },
+    })
 
     await store.clear()
     await Promise.all(
@@ -260,7 +263,10 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
   test(`${storeName}: Debounced Delete`, async (t) => {
     const store = createStore({ namespace: 'debounced-delete' })
-    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+    const debouncedStore = createStore({
+      namespace: 'debounced-delete',
+      debounce: { [testKey(2)]: DEBOUNCE_DELAY },
+    })
 
     await setValues({ store })
     await testValues({ isDefined: true, store, t })
@@ -280,7 +286,10 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
   test(`${storeName}: Debounced Clear`, async (t) => {
     const store = createStore({ namespace: 'debounced-clear' })
-    const debouncedStore = withDebounce(store, { [testKey(2)]: DEBOUNCE_DELAY })
+    const debouncedStore = createStore({
+      namespace: 'debounced-clear',
+      debounce: { [testKey(2)]: DEBOUNCE_DELAY },
+    })
 
     await setValues({ store })
     await testValues({ isDefined: true, store, t })
@@ -294,8 +303,11 @@ STORES.forEach(({ name: storeName, createStore }) => {
 
   test(`${storeName}: Debounced RegEx Key Support`, async (t) => {
     const store = createStore({ namespace: 'debounced-regex-key-support' })
-    const debouncedStore = withDebounce(store, {
-      [/-2$/]: DEBOUNCE_DELAY,
+    const debouncedStore = createStore({
+      namespace: 'debounced-regex-key-support',
+      debounce: {
+        [/-2$/]: DEBOUNCE_DELAY,
+      },
     })
 
     await store.clear()

@@ -1,6 +1,7 @@
 // Type Definitions
 export interface StoreOptions {
   namespace?: string
+  debounce?: Record<string, number>
 }
 
 export interface StoreRecord<T> {

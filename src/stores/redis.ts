@@ -7,6 +7,7 @@ import {
   exportStoreRecord,
   isDefined,
   serialize,
+  withDebounce,
 } from '../helpers.js'
 import { StoreAsync, StoreOptions, StoreRecord } from '../types.js'
 
@@ -69,4 +70,4 @@ const redisStore = (options: RedisOptions) => {
 }
 
 export const redisAsync = (options: RedisOptions): StoreAsync =>
-  expandStoreAsync(redisStore(options))
+  expandStoreAsync(withDebounce(redisStore(options), options))

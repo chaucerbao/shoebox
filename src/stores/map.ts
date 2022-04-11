@@ -1,9 +1,11 @@
 // Imports
 import {
   DEFAULT_NAMESPACE,
+  expandStoreAsync,
   expandStoreSync,
   exportStoreRecord,
-  toStoreAsync,
+  toStoreCoreAsync,
+  withDebounce,
 } from '../helpers.js'
 import { StoreAsync, StoreOptions, StoreRecord, StoreSync } from '../types.js'
 
@@ -56,4 +58,4 @@ export const mapSync = (options: MapOptions = {}): StoreSync =>
   expandStoreSync(mapStore(options))
 
 export const mapAsync = (options: MapOptions = {}): StoreAsync =>
-  toStoreAsync(mapSync(options))
+  expandStoreAsync(withDebounce(toStoreCoreAsync(mapSync(options)), options))
